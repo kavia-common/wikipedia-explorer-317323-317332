@@ -10,9 +10,9 @@
   font-weight: 600;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(59, 130, 246, 0.22);
-  background: rgba(59, 130, 246, 0.08);
-  color: rgba(17, 24, 39, 0.9);
+  border: 1px solid var(--chip-border);
+  background: var(--chip-bg);
+  color: var(--color-text-subtle);
   text-decoration: none;
 
   /* Avoid overflow when category names are long */
@@ -21,10 +21,10 @@
 }
 
 .chip:hover {
-  background: rgba(59, 130, 246, 0.12);
+  background: var(--chip-bg-hover);
 }
 
 /* Extra clarity for keyboard users on chips */
 .chip:focus-visible {
-  border-color: rgba(59, 130, 246, 0.7);
+  border-color: var(--focus-ring);
 }

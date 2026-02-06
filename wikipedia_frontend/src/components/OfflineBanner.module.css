@@ -6,8 +6,8 @@
   width: 100%;
   padding: 10px 14px;
 
-  background: rgba(239, 68, 68, 0.10);
-  border-bottom: 1px solid rgba(239, 68, 68, 0.30);
+  background: rgba(239, 68, 68, 0.12);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.42);
   backdrop-filter: blur(8px);
 }
 
@@ -16,7 +16,7 @@
   margin: 0 auto;
   padding: 0 2px;
 
-  color: rgba(17, 24, 39, 0.92);
+  color: var(--color-text);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }

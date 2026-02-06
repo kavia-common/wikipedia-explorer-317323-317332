@@ -11,9 +11,11 @@ import ArticlePage from "./pages/ArticlePage";
 import CategoryPage from "./pages/CategoryPage";
 import { getWikipediaBaseUrl, setWikipediaLanguage } from "./api/wikipedia";
 import i18n from "./i18n";
+import { useTheme } from "./theme/ThemeContext";
 
 function AppShell() {
   const { t } = useTranslation();
+  const { theme, toggleTheme } = useTheme();
 
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -52,7 +54,21 @@ function AppShell() {
           <div className="NavSpacer" />
 
           <nav className="TopNavActions" aria-label={t("nav.siteSearchAria")}>
-            <LanguageSelector />
+            <div className="TopNavControls">
+              <LanguageSelector />
+              <button
+                type="button"
+                className="ThemeToggle"
+                onClick={toggleTheme}
+                aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+                aria-pressed={theme === "dark"}
+              >
+                <span className="ThemeToggleIcon" aria-hidden="true">
+                  {theme === "dark" ? "☾" : "☀"}
+                </span>
+                <span className="ThemeToggleText">{theme === "dark" ? "Dark" : "Light"}</span>
+              </button>
+            </div>
             <SearchBar
               inputId="site-search"
               initialQuery={q}

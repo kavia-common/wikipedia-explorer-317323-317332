@@ -25,10 +25,10 @@ export default function LanguageSelector() {
           height: 36,
           borderRadius: 10,
           border: "1px solid var(--border)",
-          background: "white",
+          background: "var(--surface)",
           padding: "0 10px",
           fontWeight: 700,
-          color: "rgba(17, 24, 39, 0.9)",
+          color: "var(--color-text-subtle)",
         }}
       >
         <option value="en">{t("language.english")}</option>

@@ -1,19 +1,86 @@
-/* Wikipedia Explorer theme (light) */
-:root {
-  --primary: #3b82f6;
-  --secondary: #64748b;
-  --success: #06b6d4;
-  --error: #ef4444;
+/* Theme tokens + global layout styles.
+   Theme is controlled via <html data-theme="light|dark"> (set by ThemeProvider). */
 
-  --background: #f9fafb;
-  --surface: #ffffff;
+/* Default to light tokens */
+:root,
+:root[data-theme="light"] {
+  /* Core palette */
+  --color-primary: #3b82f6;
+  --color-secondary: #64748b;
+  --color-accent: #06b6d4;
+  --color-danger: #ef4444;
 
-  --text: #111827;
-  --border: rgba(17, 24, 39, 0.12);
+  /* Surfaces */
+  --color-bg: #f9fafb;
+  --color-surface: #ffffff;
+  --color-surface-2: rgba(100, 116, 139, 0.05);
+
+  /* Text */
+  --color-text: #111827;
+  --color-text-muted: rgba(17, 24, 39, 0.72);
+  --color-text-subtle: rgba(17, 24, 39, 0.85);
+
+  /* Borders/elevation */
+  --color-border: rgba(17, 24, 39, 0.12);
+  --shadow-elevated: 0 10px 30px rgba(17, 24, 39, 0.12);
 
   /* Focus ring tuned for light theme, high visibility */
-  --focus-ring: rgba(59, 130, 246, 0.9);
+  --focus-ring: rgba(59, 130, 246, 0.92);
   --focus-ring-bg: rgba(59, 130, 246, 0.22);
+
+  /* Component tokens */
+  --nav-bg: rgba(249, 250, 251, 0.8);
+  --chip-border: rgba(59, 130, 246, 0.22);
+  --chip-bg: rgba(59, 130, 246, 0.08);
+  --chip-bg-hover: rgba(59, 130, 246, 0.12);
+
+  /* Back-compat aliases used in existing CSS modules */
+  --primary: var(--color-primary);
+  --secondary: var(--color-secondary);
+  --success: var(--color-accent);
+  --error: var(--color-danger);
+  --background: var(--color-bg);
+  --surface: var(--color-surface);
+  --text: var(--color-text);
+  --border: var(--color-border);
+}
+
+/* Dark tokens: chosen to preserve brand accents while meeting contrast expectations */
+:root[data-theme="dark"] {
+  --color-primary: #60a5fa; /* lighter blue for contrast on dark */
+  --color-secondary: #94a3b8;
+  --color-accent: #22d3ee;
+  --color-danger: #f87171;
+
+  --color-bg: #0b1220;
+  --color-surface: #0f172a;
+  --color-surface-2: rgba(148, 163, 184, 0.10);
+
+  --color-text: #e5e7eb;
+  --color-text-muted: rgba(229, 231, 235, 0.78);
+  --color-text-subtle: rgba(229, 231, 235, 0.88);
+
+  --color-border: rgba(229, 231, 235, 0.14);
+  --shadow-elevated: 0 12px 36px rgba(0, 0, 0, 0.45);
+
+  /* Strong, visible focus on dark backgrounds */
+  --focus-ring: rgba(96, 165, 250, 0.98);
+  --focus-ring-bg: rgba(96, 165, 250, 0.26);
+
+  --nav-bg: rgba(11, 18, 32, 0.72);
+  --chip-border: rgba(96, 165, 250, 0.30);
+  --chip-bg: rgba(96, 165, 250, 0.12);
+  --chip-bg-hover: rgba(96, 165, 250, 0.18);
+
+  /* Back-compat aliases */
+  --primary: var(--color-primary);
+  --secondary: var(--color-secondary);
+  --success: var(--color-accent);
+  --error: var(--color-danger);
+  --background: var(--color-bg);
+  --surface: var(--color-surface);
+  --text: var(--color-text);
+  --border: var(--color-border);
 }
 
 * {
@@ -28,10 +95,10 @@ body {
 
 body {
   margin: 0;
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell,
-    Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-  background: var(--background);
-  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans,
+    Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  background: var(--color-bg);
+  color: var(--color-text);
   overflow-x: hidden; /* safety net for tiny screens */
 }
 
@@ -57,8 +124,8 @@ a {
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid rgba(59, 130, 246, 0.35);
-  background: var(--surface);
-  color: var(--text);
+  background: var(--color-surface);
+  color: var(--color-text);
   text-decoration: none;
   font-weight: 700;
 
@@ -87,9 +154,9 @@ a {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(249, 250, 251, 0.8);
+  background: var(--nav-bg);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .TopNavInner {
@@ -117,8 +184,12 @@ a {
   display: grid;
   place-items: center;
   background: rgba(59, 130, 246, 0.12);
-  color: var(--primary);
+  color: var(--color-primary);
   font-weight: 900;
+}
+
+:root[data-theme="dark"] .BrandMark {
+  background: rgba(96, 165, 250, 0.14);
 }
 
 .BrandText {
@@ -135,7 +206,7 @@ a {
 
 .BrandSubtitle {
   font-size: 12px;
-  color: var(--secondary);
+  color: var(--color-secondary);
   line-height: 1;
 }
 
@@ -147,6 +218,52 @@ a {
 .TopNavActions {
   width: min(720px, 100%);
   min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.TopNavControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.ThemeToggle {
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ThemeToggle:hover {
+  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.08);
+}
+
+:root[data-theme="dark"] .ThemeToggle:hover {
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+}
+
+.ThemeToggleIcon {
+  width: 18px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 14px;
+  color: var(--color-primary);
+}
+
+.ThemeToggleText {
+  font-size: 13px;
+  color: var(--color-text-subtle);
 }
 
 .Main {
@@ -161,9 +278,9 @@ a {
 }
 
 .Footer {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--color-border);
   padding: 14px 16px;
-  color: var(--secondary);
+  color: var(--color-secondary);
   font-size: 12px;
 }
 
@@ -177,8 +294,8 @@ a {
 }
 
 .Badge {
-  font-weight: 700;
-  color: rgba(17, 24, 39, 0.85);
+  font-weight: 800;
+  color: var(--color-text-subtle);
 }
 
 @media (max-width: 720px) {
@@ -205,5 +322,9 @@ a {
   .TopNavActions {
     width: 100%;
     min-width: 0;
+  }
+
+  .TopNavControls {
+    justify-content: space-between;
   }
 }

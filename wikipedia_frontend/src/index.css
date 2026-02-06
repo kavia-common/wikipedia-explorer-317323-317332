@@ -2,6 +2,6 @@
 html,
 body {
   margin: 0;
-  background: #f9fafb;
+  background: var(--background);
   max-width: 100%;
 }

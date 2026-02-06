@@ -35,7 +35,7 @@
   display: grid;
   place-items: center;
   font-weight: 800;
-  color: rgba(17, 24, 39, 0.45);
+  color: var(--color-text-muted);
 }
 
 .body {
@@ -55,7 +55,7 @@
 }
 
 .extract {
-  color: rgba(17, 24, 39, 0.8);
+  color: var(--color-text-subtle);
   font-size: 13px;
   line-height: 1.4;
 }

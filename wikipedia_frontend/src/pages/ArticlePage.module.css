@@ -50,11 +50,12 @@
 }
 
 .crumbSep {
-  color: rgba(100, 116, 139, 0.6);
+  color: var(--color-secondary);
+  opacity: 0.7;
 }
 
 .crumbCurrent {
-  color: rgba(17, 24, 39, 0.9);
+  color: var(--color-text-subtle);
   font-weight: 700;
 }
 
@@ -89,16 +90,16 @@
   margin: 10px 0 14px;
   padding: 12px;
   border-radius: 16px;
-  background: rgba(6, 182, 212, 0.08);
-  border: 1px solid rgba(6, 182, 212, 0.22);
-  color: rgba(17, 24, 39, 0.92);
+  background: rgba(6, 182, 212, 0.10);
+  border: 1px solid rgba(6, 182, 212, 0.28);
+  color: var(--color-text);
   font-size: 14px;
   line-height: 1.55;
 }
 
 .articleHtml {
   text-align: left;
-  color: rgba(17, 24, 39, 0.92);
+  color: var(--color-text);
   font-size: 14px;
   line-height: 1.7;
 
@@ -143,7 +144,7 @@
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(100, 116, 139, 0.04);
+  background: var(--color-surface-2);
 }
 
 .bottomMeta {
@@ -210,7 +211,7 @@
 }
 
 .errorMsg {
-  color: rgba(17, 24, 39, 0.8);
+  color: var(--color-text-muted);
   font-size: 13px;
 }
 
