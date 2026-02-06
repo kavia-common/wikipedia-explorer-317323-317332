@@ -105,5 +105,14 @@
   },
   "uiStates": {
     "emptyDefaultTitle": "Nothing here yet"
+  },
+  "mediaViewer": {
+    "title": "Image viewer",
+    "titleWithCount": "Image viewer ({{index}} of {{count}})",
+    "close": "Close",
+    "previous": "Previous",
+    "next": "Next",
+    "captionLabel": "Caption",
+    "altLabel": "Description"
   }
 }

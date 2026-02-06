@@ -266,6 +266,63 @@
   height: auto;
 }
 
+/* --- Phase 11: In-article media lazy placeholder + zoom affordance --- */
+.articleHtml :global(.wikiMediaWrap) {
+  display: inline-block;
+  position: relative;
+  max-width: 100%;
+  border-radius: 14px;
+
+  /* Provide a focus ring when activated via keyboard (wrapper is focusable via tabindex set by browser on inner image if any). */
+  outline: none;
+}
+
+.articleHtml :global(.wikiMediaWrap:focus-within) {
+  outline: 2px solid rgba(59, 130, 246, 0.55);
+  outline-offset: 2px;
+}
+
+.articleHtml :global(.wikiMediaPlaceholder) {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: linear-gradient(
+    90deg,
+    rgba(100, 116, 139, 0.08),
+    rgba(100, 116, 139, 0.16),
+    rgba(100, 116, 139, 0.08)
+  );
+  background-size: 200% 100%;
+  animation: wikiMediaShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes wikiMediaShimmer {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 200% 0%;
+  }
+}
+
+/* When visible, fade placeholder out quickly to avoid flashing. */
+.articleHtml :global(.wikiMediaWrap[data-media-visible="true"] .wikiMediaPlaceholder) {
+  opacity: 0;
+  animation: none;
+  transition: opacity 220ms ease;
+}
+
+/* Ensure the image sits above placeholder. */
+.articleHtml :global(.wikiMediaWrap img) {
+  position: relative;
+  z-index: 1;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  cursor: zoom-in;
+}
+
 /* Wikipedia content sometimes includes wide tables; ensure they don't overflow the page. */
 .articleHtml :global(.wikiTableWrap) {
   max-width: 100%;

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
+import ImageViewerModal from "../components/ImageViewerModal";
 import {
   getArticleCacheKeys,
   getArticleCategories,
@@ -29,7 +30,7 @@ function slugifyHeading(text) {
   if (!raw) return "section";
   const slug = raw
     .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "") // strip diacritics
+    .replace(/[\u0300-\u036f]/g, "") // strip diacritics
     .replace(/&/g, " and ")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
@@ -53,6 +54,48 @@ function isReferencesHeading(text) {
 }
 
 /**
+ * SECURITY: This is a strict allowlist for image sources we will treat as viewable media.
+ * It must remain at least as strict as sanitizeWikipediaHtml's URL policy, and it must
+ * not introduce any new supported protocols.
+ */
+function isSafeMediaSrc(src) {
+  const raw = String(src || "").trim();
+  if (!raw) return false;
+
+  // Relative images are okay (Wikipedia often uses protocol-relative or relative paths).
+  if (raw.startsWith("/") || raw.startsWith("./") || raw.startsWith("../")) return true;
+
+  // Protocol-relative URLs: treat as https by default, but only allow typical web schemes.
+  if (raw.startsWith("//")) return true;
+
+  try {
+    const u = new URL(raw);
+    const p = u.protocol.toLowerCase();
+    return p === "http:" || p === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Best-effort caption extraction for a Wikipedia image:
+ * - <figure><figcaption>...</figcaption></figure>
+ * - common thumbnail wrapper caption nodes
+ */
+function extractImageCaption(imgEl) {
+  const figure = imgEl.closest("figure");
+  const figcaption = figure?.querySelector?.("figcaption");
+  const text = String(figcaption?.textContent || "").trim();
+  if (text) return text;
+
+  // Wikipedia sometimes uses .thumbcaption near the image.
+  const thumb = imgEl.closest(".thumb");
+  const thumbCaption = thumb?.querySelector?.(".thumbcaption");
+  const t = String(thumbCaption?.textContent || "").trim();
+  return t || "";
+}
+
+/**
  * Post-process sanitized HTML in a detached container.
  * Security note: we never introduce new untrusted HTML; we only:
  * - add safe attributes (id, data-*, aria-*)
@@ -66,6 +109,9 @@ function buildRenderModelFromSanitizedHtml(safeHtml) {
   const headings = Array.from(container.querySelectorAll("h2, h3, h4"));
   const usedIds = new Set();
   const toc = [];
+
+  // Collect a stable list of in-article images for the viewer (post-sanitization only).
+  const images = [];
 
   headings.forEach((h) => {
     const level = Number(String(h.tagName || "").slice(1));
@@ -167,7 +213,9 @@ function buildRenderModelFromSanitizedHtml(safeHtml) {
 
   // For reference items, attempt to add a "back to text" link pointing to the first source sup.
   // Wikipedia commonly uses <li id="cite_note-..."> or similar.
-  const refItems = Array.from(container.querySelectorAll('li[id^="cite_note"], li[id^="cite_note-"], li[id^="cite_note_"]'));
+  const refItems = Array.from(
+    container.querySelectorAll('li[id^="cite_note"], li[id^="cite_note-"], li[id^="cite_note_"]')
+  );
   refItems.forEach((li) => {
     const id = String(li.getAttribute("id") || "");
     if (!id) return;
@@ -185,7 +233,6 @@ function buildRenderModelFromSanitizedHtml(safeHtml) {
     back.setAttribute("data-backlink", "true");
     back.className = "wikiBacklink";
     back.textContent = "↩";
-    // Keep it minimal; label will be provided by aria-label in React via CSS ::after not possible.
     back.setAttribute("aria-label", "Back to text");
 
     // Append with spacing.
@@ -208,10 +255,60 @@ function buildRenderModelFromSanitizedHtml(safeHtml) {
     ths.forEach((th) => th.setAttribute("data-sticky-th", "true"));
   });
 
+  /**
+   * Media enhancements (post-sanitization):
+   * - Wrap <img> in a lightweight placeholder container.
+   * - Use native loading="lazy" and decoding="async".
+   * - Store safe metadata for an on-page zoom viewer (no links, no scripts).
+   *
+   * SECURITY: We do not add any new src/href values. We only read the sanitized src and,
+   * if it passes a strict allowlist, store it into data-media-src for click handling.
+   */
+  const imgs = Array.from(container.querySelectorAll("img"));
+  imgs.forEach((img) => {
+    const src = String(img.getAttribute("src") || "").trim();
+    if (!isSafeMediaSrc(src)) return;
+
+    img.setAttribute("loading", "lazy");
+    img.setAttribute("decoding", "async");
+
+    const alt = String(img.getAttribute("alt") || "").trim();
+    if (!img.hasAttribute("alt")) img.setAttribute("alt", "");
+
+    const caption = extractImageCaption(img);
+    const index = images.length;
+
+    const parent = img.parentElement;
+    const alreadyWrapped = parent?.hasAttribute?.("data-media-image-wrap");
+    if (!alreadyWrapped) {
+      const wrap = document.createElement("span");
+      wrap.setAttribute("data-media-image-wrap", "true");
+      wrap.setAttribute("data-media-index", String(index));
+      wrap.className = "wikiMediaWrap";
+
+      const placeholder = document.createElement("span");
+      placeholder.setAttribute("data-media-placeholder", "true");
+      placeholder.className = "wikiMediaPlaceholder";
+
+      parent?.insertBefore?.(wrap, img);
+      wrap.appendChild(placeholder);
+      wrap.appendChild(img);
+    } else {
+      parent.setAttribute("data-media-index", String(index));
+    }
+
+    img.setAttribute("data-media-src", src);
+    img.setAttribute("data-media-alt", alt);
+    if (caption) img.setAttribute("data-media-caption", caption);
+
+    images.push({ src, alt, caption });
+  });
+
   return {
     html: container.innerHTML,
     toc,
     hasReferences: Boolean(references),
+    images,
   };
 }
 
@@ -254,6 +351,13 @@ export default function ArticlePage() {
   const [tocOpenMobile, setTocOpenMobile] = useState(false);
   const [referencesOpen, setReferencesOpen] = useState(true);
 
+  // Phase 11: image viewer modal state (for in-article images only).
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+
+  // Bound once per content update; avoids rebinding observers on unrelated renders.
+  const mediaObserverRef = useRef(null);
+
   useEffect(() => {
     if (!title) return;
 
@@ -276,9 +380,7 @@ export default function ArticlePage() {
 
     const hasAnyCached = Boolean(sStatus.hit || hStatus.hit || rStatus.hit);
     const anyStale = Boolean(
-      (sStatus.hit && sStatus.stale) ||
-        (hStatus.hit && hStatus.stale) ||
-        (rStatus.hit && rStatus.stale)
+      (sStatus.hit && sStatus.stale) || (hStatus.hit && hStatus.stale) || (rStatus.hit && rStatus.stale)
     );
 
     if (hasAnyCached) {
@@ -323,7 +425,6 @@ export default function ArticlePage() {
 
     (async () => {
       try {
-        // Categories are smaller and not persisted; fetch alongside (SWR still applies).
         const [s, h, c, r] = await Promise.all([
           getArticleSummary(title, {
             signal: controller.signal,
@@ -395,9 +496,7 @@ export default function ArticlePage() {
   // Mobile defaults: collapse TOC and references.
   useEffect(() => {
     const isMobile =
-      typeof window !== "undefined" && window.matchMedia
-        ? window.matchMedia("(max-width: 640px)").matches
-        : false;
+      typeof window !== "undefined" && window.matchMedia ? window.matchMedia("(max-width: 640px)").matches : false;
     setTocOpenMobile(false);
     setReferencesOpen(!isMobile);
   }, [title]);
@@ -408,17 +507,16 @@ export default function ArticlePage() {
   const renderModel = useMemo(() => {
     // In SSR/tests without DOM, just pass-through.
     if (typeof document === "undefined") {
-      return { html: safeHtml, toc: [], hasReferences: false };
+      return { html: safeHtml, toc: [], hasReferences: false, images: [] };
     }
 
     // Avoid re-processing if SWR background update didn't change content.
     if (lastProcessedSafeHtmlRef.current === safeHtml) {
-      return pendingHashScrollRef.current?.model || { html: safeHtml, toc: [], hasReferences: false };
+      return pendingHashScrollRef.current?.model || { html: safeHtml, toc: [], hasReferences: false, images: [] };
     }
 
     const model = buildRenderModelFromSanitizedHtml(safeHtml);
     lastProcessedSafeHtmlRef.current = safeHtml;
-    // Keep last model for hash-scroll effect usage without extra parsing.
     pendingHashScrollRef.current = { model };
     return model;
   }, [safeHtml]);
@@ -432,13 +530,11 @@ export default function ArticlePage() {
       if (!hash || hash.length < 2) return;
       const id = hash.slice(1);
 
-      // Only scroll within the article root to avoid collisions.
       const root = articleRootRef.current;
       if (!root) return;
       const target = root.querySelector(`#${CSS.escape(id)}`);
       if (!target) return;
 
-      // Use rAF to wait until layout stabilizes; keeps SWR updates from janking.
       requestAnimationFrame(() => {
         target.scrollIntoView({ behavior: "smooth", block: "start" });
       });
@@ -448,6 +544,41 @@ export default function ArticlePage() {
     window.addEventListener("hashchange", run);
     return () => window.removeEventListener("hashchange", run);
   }, [renderModel.html, title]);
+
+  // Phase 11: lazy image placeholders.
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const root = articleRootRef.current;
+    if (!root) return undefined;
+
+    mediaObserverRef.current?.disconnect?.();
+    mediaObserverRef.current = null;
+
+    const wraps = Array.from(root.querySelectorAll("[data-media-image-wrap='true']"));
+    if (wraps.length === 0) return undefined;
+
+    if (!("IntersectionObserver" in window)) {
+      wraps.forEach((w) => w.setAttribute("data-media-visible", "true"));
+      return undefined;
+    }
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((ent) => {
+          if (!ent.isIntersecting) return;
+          const el = ent.target;
+          el.setAttribute("data-media-visible", "true");
+          obs.unobserve(el);
+        });
+      },
+      { root: null, rootMargin: "200px 0px", threshold: 0.01 }
+    );
+
+    wraps.forEach((w) => obs.observe(w));
+    mediaObserverRef.current = obs;
+
+    return () => obs.disconnect();
+  }, [renderModel.html]);
 
   const tocItems = renderModel.toc || [];
   const hasToc = tocItems.length > 0;
@@ -464,18 +595,35 @@ export default function ArticlePage() {
   function handleTocClick(e, id) {
     e.preventDefault();
     scrollToId(id);
-    // Update hash without full reload.
     if (typeof window !== "undefined") {
       window.history.replaceState(null, "", `#${id}`);
     }
   }
 
   function handleArticleClick(e) {
+    // Phase 11: image click-to-zoom (post-sanitization only).
+    const img = e.target?.closest?.("img");
+    if (img) {
+      const src = String(img.getAttribute("data-media-src") || "").trim();
+      const indexRaw =
+        img.closest?.("[data-media-image-wrap='true']")?.getAttribute?.("data-media-index") ||
+        img.parentElement?.getAttribute?.("data-media-index") ||
+        "";
+      const idx = Number.parseInt(String(indexRaw), 10);
+      if (src && Number.isFinite(idx)) {
+        const link = img.closest?.("a");
+        if (link) e.preventDefault();
+        e.preventDefault();
+        setViewerIndex(Math.max(0, idx));
+        setViewerOpen(true);
+        return;
+      }
+    }
+
     const a = e.target?.closest?.("a");
     if (!a) return;
 
     const href = String(a.getAttribute("href") || "");
-    // Only handle in-page hash navigation; do not interfere with other links.
     if (!href.startsWith("#") || href.length < 2) return;
 
     const id = href.slice(1);
@@ -546,16 +694,12 @@ export default function ArticlePage() {
           {summary?.description ? (
             <div className={styles.description}>
               {summary.description}
-              {typeof navigator !== "undefined" && navigator.onLine === false
-                ? ` • ${t("offline.cached")}`
-                : null}
+              {typeof navigator !== "undefined" && navigator.onLine === false ? ` • ${t("offline.cached")}` : null}
               {isRefreshing ? ` • ${t("common.updating")}` : null}
             </div>
           ) : isRefreshing ? (
             <div className={styles.description}>
-              {typeof navigator !== "undefined" && navigator.onLine === false
-                ? t("offline.cached")
-                : t("common.updating")}
+              {typeof navigator !== "undefined" && navigator.onLine === false ? t("offline.cached") : t("common.updating")}
             </div>
           ) : typeof navigator !== "undefined" && navigator.onLine === false ? (
             <div className={styles.description}>{t("offline.cached")}</div>
@@ -604,7 +748,16 @@ export default function ArticlePage() {
           ref={articleRootRef}
           className={styles.articleHtml}
           onClick={handleArticleClick}
-          // Sanitized before injection; post-processed in a detached container only.
+          onKeyDown={(e) => {
+            if (e.key !== "Enter" && e.key !== " ") return;
+            const wrap = e.target?.closest?.("[data-media-image-wrap='true']");
+            if (!wrap) return;
+            const idx = Number.parseInt(String(wrap.getAttribute("data-media-index") || ""), 10);
+            if (!Number.isFinite(idx)) return;
+            e.preventDefault();
+            setViewerIndex(Math.max(0, idx));
+            setViewerOpen(true);
+          }}
           dangerouslySetInnerHTML={{ __html: renderModel.html }}
         />
 
@@ -616,14 +769,9 @@ export default function ArticlePage() {
               aria-expanded={referencesOpen}
               onClick={toggleReferencesCollapsed}
             >
-              {referencesOpen ? t("articleFidelity.collapse") : t("articleFidelity.expand")}{" "}
-              {t("articleFidelity.referencesTitle")}
+              {referencesOpen ? t("articleFidelity.collapse") : t("articleFidelity.expand")} {t("articleFidelity.referencesTitle")}
             </button>
-            {/* CSS will hide/show the actual references wrapper based on this data attribute */}
-            <div
-              className={styles.referencesState}
-              data-references-open={referencesOpen ? "true" : "false"}
-            />
+            <div className={styles.referencesState} data-references-open={referencesOpen ? "true" : "false"} />
           </section>
         ) : null}
 
@@ -644,6 +792,23 @@ export default function ArticlePage() {
         </div>
       </main>
 
+      <ImageViewerModal
+        open={viewerOpen}
+        images={renderModel.images || []}
+        activeIndex={viewerIndex}
+        onClose={() => setViewerOpen(false)}
+        onPrev={() => {
+          const list = renderModel.images || [];
+          if (list.length <= 1) return;
+          setViewerIndex((i) => (i - 1 + list.length) % list.length);
+        }}
+        onNext={() => {
+          const list = renderModel.images || [];
+          if (list.length <= 1) return;
+          setViewerIndex((i) => (i + 1) % list.length);
+        }}
+      />
+
       <aside className={styles.sidebar}>
         {hasToc ? (
           <nav className={styles.tocDesktop} aria-label={t("articleFidelity.tocAriaLabel")}>
@@ -652,11 +817,7 @@ export default function ArticlePage() {
               <ol className={styles.tocList}>
                 {tocItems.map((it) => (
                   <li key={it.id} className={styles[`tocL${it.level}`] || styles.tocL2}>
-                    <a
-                      href={`#${it.id}`}
-                      className={styles.tocLink}
-                      onClick={(e) => handleTocClick(e, it.id)}
-                    >
+                    <a href={`#${it.id}`} className={styles.tocLink} onClick={(e) => handleTocClick(e, it.id)}>
                       {it.text}
                     </a>
                   </li>

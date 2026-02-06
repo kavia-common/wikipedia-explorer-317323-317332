@@ -105,5 +105,14 @@
   },
   "uiStates": {
     "emptyDefaultTitle": "Nada por aquí todavía"
+  },
+  "mediaViewer": {
+    "title": "Visor de imágenes",
+    "titleWithCount": "Visor de imágenes ({{index}} de {{count}})",
+    "close": "Cerrar",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "captionLabel": "Leyenda",
+    "altLabel": "Descripción"
   }
 }
