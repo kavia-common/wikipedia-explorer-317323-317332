@@ -1,0 +1,98 @@
+{
+  "app": {
+    "name": "Explorador de Wikipedia",
+    "tagline": "Buscar • Leer • Explorar categorías",
+    "dataFrom": "Datos de",
+    "base": "Base",
+    "tipFooter": "Consejo: Haz clic en las categorías debajo de un artículo para explorar más páginas."
+  },
+  "nav": {
+    "skipToContent": "Saltar al contenido",
+    "skipToSearch": "Saltar a la búsqueda",
+    "homeAria": "Inicio del Explorador de Wikipedia",
+    "siteSearchAria": "Búsqueda del sitio",
+    "language": "Idioma"
+  },
+  "language": {
+    "english": "English",
+    "spanish": "Español"
+  },
+  "offline": {
+    "banner": "Estás sin conexión. Es posible que las páginas vistas anteriormente aún estén disponibles.",
+    "cached": "Sin conexión (en caché)"
+  },
+  "common": {
+    "loading": "Cargando…",
+    "tryAgain": "Intentar de nuevo",
+    "reload": "Recargar",
+    "updating": "Actualizando…",
+    "search": "Buscar",
+    "breadcrumb": "Ruta de navegación"
+  },
+  "search": {
+    "placeholder": "Buscar en Wikipedia…",
+    "ariaLabel": "Buscar en Wikipedia",
+    "suggestionsAria": "Sugerencias",
+    "loadingSuggestions": "Cargando…",
+    "recentOffline": "Búsquedas recientes (sin conexión)",
+    "emptyTitle": "Buscar en Wikipedia",
+    "emptyDescription": "Escribe una consulta en la barra de búsqueda para ver resultados.",
+    "resultsFor": "Resultados para “{{q}}”",
+    "resultsCount": "{{count}} resultados",
+    "loadingResults": "Cargando resultados…",
+    "unableToLoadResults": "No se pudieron cargar los resultados",
+    "failedToLoadResults": "No se pudieron cargar los resultados de búsqueda.",
+    "noResultsTitle": "Sin resultados",
+    "noResultsDescription": "Prueba con otro término de búsqueda."
+  },
+  "home": {
+    "subtitle": "Busca, lee y explora categorías—con la API pública de Wikipedia.",
+    "trySearchingFor": "Prueba a buscar",
+    "trySearchingForExamples": "“Eclipse solar”, “Ada Lovelace”, “Jazz”, “Aprendizaje automático”",
+    "browseCategories": "Explorar categorías",
+    "browseCategoriesBody": "Abre un artículo y explora sus categorías para descubrir más páginas."
+  },
+  "article": {
+    "loading": "Cargando artículo…",
+    "unableToLoad": "No se pudo cargar “{{title}}”.",
+    "failedToLoad": "No se pudo cargar el artículo.",
+    "categories": "Categorías",
+    "noCategories": "No se encontraron categorías.",
+    "related": "Relacionado",
+    "searchSimilar": "Buscar similares",
+    "noRelated": "No hay artículos relacionados disponibles.",
+    "breadcrumbs": {
+      "home": "Inicio",
+      "categoryPrefix": "Categoría: {{category}}",
+      "article": "Artículo"
+    }
+  },
+  "category": {
+    "titlePrefix": "Categoría: {{category}}",
+    "subtitle": "Explora páginas en esta categoría.",
+    "subcategories": "Subcategorías",
+    "subcategoriesAria": "Subcategorías",
+    "loadingTitle": "Cargando categoría…",
+    "loadingDescription": "Obteniendo miembros de la categoría.",
+    "unableToLoad": "No se pudo cargar la categoría",
+    "failedToLoadMembers": "No se pudieron cargar los miembros de la categoría.",
+    "noPagesTitle": "No se encontraron páginas",
+    "noPagesDescription": "Esta categoría puede estar vacía o no disponible.",
+    "loadMore": "Cargar más",
+    "loadingMore": "Cargando…",
+    "failedToLoadMore": "No se pudieron cargar más páginas.",
+    "endOfCategory": "Has llegado al final de esta categoría.",
+    "breadcrumbs": {
+      "home": "Inicio",
+      "category": "Categoría"
+    }
+  },
+  "errors": {
+    "boundaryTitle": "Tuvimos un problema",
+    "boundaryDescription": "Ocurrió un error inesperado al renderizar la página.",
+    "somethingWentWrong": "Algo salió mal"
+  },
+  "uiStates": {
+    "emptyDefaultTitle": "Nada por aquí todavía"
+  }
+}

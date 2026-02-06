@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import i18n from "../i18n";
 import { getCategoryMembersPage, getCategorySubcategories } from "../api/wikipedia";
 import ArticleCard from "../components/ArticleCard";
 import CategoryList from "../components/CategoryList";
@@ -13,6 +15,7 @@ const PAGE_SIZE = 30;
 // PUBLIC_INTERFACE
 export default function CategoryPage() {
   /** Displays members of a given Wikipedia category. */
+  const { t } = useTranslation();
   const { category: encodedCategory } = useParams();
   const location = useLocation();
   const category = useMemo(
@@ -76,7 +79,7 @@ export default function CategoryPage() {
         const res = await getCategoryMembersPage(
           category,
           { limit: PAGE_SIZE, continueToken: null },
-          { signal: controller.signal }
+          { signal: controller.signal, lang: i18n.language }
         );
         if (!active) return;
 
@@ -87,7 +90,7 @@ export default function CategoryPage() {
         if (!active) return;
         if (e?.name === "AbortError") return;
         setStatus("error");
-        setError(e?.message || "Failed to load category members.");
+        setError(e?.message || t("category.failedToLoadMembers"));
       }
     })();
 
@@ -96,7 +99,7 @@ export default function CategoryPage() {
         const res = await getCategorySubcategories(
           category,
           { limit: 50, continueToken: null },
-          { signal: controller.signal }
+          { signal: controller.signal, lang: i18n.language }
         );
         if (!active) return;
         setSubcats(res.items || []);
@@ -131,7 +134,7 @@ export default function CategoryPage() {
       const res = await getCategoryMembersPage(
         category,
         { limit: PAGE_SIZE, continueToken },
-        { signal: controller.signal }
+        { signal: controller.signal, lang: i18n.language }
       );
 
       setItems((prev) => [...prev, ...(res.items || [])]);
@@ -144,16 +147,16 @@ export default function CategoryPage() {
     } catch (e) {
       if (e?.name === "AbortError") return;
       setLoadingMore(false);
-      setLoadMoreError(e?.message || "Failed to load more pages.");
+      setLoadMoreError(e?.message || t("category.failedToLoadMore"));
       window.setTimeout(() => loadMoreButtonRef.current?.focus(), 0);
     }
   };
 
   return (
     <div className={styles.wrap}>
-      <nav className={styles.breadcrumbs} aria-label="Breadcrumb">
+      <nav className={styles.breadcrumbs} aria-label={t("common.breadcrumb")}>
         <Link className={styles.crumbLink} to="/">
-          Home
+          {t("category.breadcrumbs.home")}
         </Link>
         <span className={styles.crumbSep} aria-hidden="true">
           /
@@ -179,37 +182,34 @@ export default function CategoryPage() {
             </span>
           </>
         ) : null}
-        <span className={styles.crumbCurrent}>Category</span>
+        <span className={styles.crumbCurrent}>{t("category.breadcrumbs.category")}</span>
       </nav>
 
       <div className={styles.header}>
-        <h1 className={styles.title}>Category: {category}</h1>
-        <div className={styles.subtitle}>Browse pages in this category.</div>
+        <h1 className={styles.title}>{t("category.titlePrefix", { category })}</h1>
+        <div className={styles.subtitle}>{t("category.subtitle")}</div>
       </div>
 
       {subcatsStatus === "success" && subcats.length > 0 ? (
-        <section className={styles.subcats} aria-label="Subcategories">
-          <div className={styles.sectionTitle}>Subcategories</div>
+        <section className={styles.subcats} aria-label={t("category.subcategoriesAria")}>
+          <div className={styles.sectionTitle}>{t("category.subcategories")}</div>
           <CategoryList categories={subcats} />
         </section>
       ) : null}
 
       {status === "loading" && (
-        <LoadingState title="Loading category…" description="Fetching category members." />
+        <LoadingState title={t("category.loadingTitle")} description={t("category.loadingDescription")} />
       )}
       {status === "error" && (
         <ErrorState
-          title="Unable to load category"
-          description={error || "Something went wrong."}
+          title={t("category.unableToLoad")}
+          description={error || t("errors.somethingWentWrong")}
           onRetry={() => setStatus("loading")}
-          retryLabel="Try again"
+          retryLabel={t("common.tryAgain")}
         />
       )}
       {status === "success" && items.length === 0 && (
-        <EmptyState
-          title="No pages found"
-          description="This category may be empty or unavailable."
-        />
+        <EmptyState title={t("category.noPagesTitle")} description={t("category.noPagesDescription")} />
       )}
 
       <div className={styles.list} aria-live="polite">
@@ -247,11 +247,11 @@ export default function CategoryPage() {
               disabled={!canLoadMore}
               aria-busy={loadingMore ? "true" : "false"}
             >
-              {loadingMore ? "Loading…" : "Load more"}
+              {loadingMore ? t("category.loadingMore") : t("category.loadMore")}
             </button>
           ) : (
             <div className={styles.loadMoreDone} role="note">
-              You’ve reached the end of this category.
+              {t("category.endOfCategory")}
             </div>
           )}
         </div>

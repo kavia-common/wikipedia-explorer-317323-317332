@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import i18n from "../i18n";
 import {
   getSearchCacheKey,
   getWikipediaCacheStatus,
@@ -21,6 +23,7 @@ function useQueryParam(name) {
 // PUBLIC_INTERFACE
 export default function SearchResultsPage() {
   /** Displays Wikipedia search results for q= query param. */
+  const { t } = useTranslation();
   const q = useQueryParam("q");
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
@@ -44,7 +47,7 @@ export default function SearchResultsPage() {
     // Track last-viewed searches for offline support and SW resync.
     addRecentSearchQuery(trimmed, { max: 8 });
 
-    const key = getSearchCacheKey(trimmed, 20);
+    const key = getSearchCacheKey(trimmed, 20, { lang: i18n.language });
     activeKeyRef.current = key;
 
     const controller = new AbortController();
@@ -80,6 +83,7 @@ export default function SearchResultsPage() {
       try {
         const res = await searchPages(trimmed, 20, {
           signal: controller.signal,
+          lang: i18n.language,
           // Persistence on by default in API; pass explicitly for clarity.
           persist: true,
           onUpdate: (value, meta) => {
@@ -120,42 +124,37 @@ export default function SearchResultsPage() {
   }, [q]);
 
   if (!q.trim()) {
-    return (
-      <EmptyState
-        title="Search Wikipedia"
-        description="Enter a query in the search bar to get results."
-      />
-    );
+    return <EmptyState title={t("search.emptyTitle")} description={t("search.emptyDescription")} />;
   }
 
   return (
     <div className={styles.wrap}>
       <div className={styles.headerRow}>
-        <h1 className={styles.title}>Results for “{q}”</h1>
+        <h1 className={styles.title}>{t("search.resultsFor", { q })}</h1>
         <div className={styles.count}>
-          {status === "success" ? `${items.length} results` : null}
+          {status === "success" ? t("search.resultsCount", { count: items.length }) : null}
           {typeof navigator !== "undefined" && navigator.onLine === false
-            ? " • Offline (cached)"
+            ? ` • ${t("offline.cached")}`
             : null}
-          {status === "success" && isRefreshing ? " • Updating…" : null}
+          {status === "success" && isRefreshing ? ` • ${t("common.updating")}` : null}
         </div>
       </div>
 
-      {status === "loading" && <LoadingState title="Loading results…" />}
+      {status === "loading" && <LoadingState title={t("search.loadingResults")} />}
       {status === "error" && (
         <ErrorState
-          title="Unable to load results"
-          description={error || "Something went wrong."}
+          title={t("search.unableToLoadResults")}
+          description={error || t("errors.somethingWentWrong")}
           onRetry={() => {
             // By passing forceRefresh, we guarantee a network attempt; SWR still de-dupes.
             // (Simplest "retry": push state through a re-render by setting status)
             setStatus("loading");
           }}
-          retryLabel="Try again"
+          retryLabel={t("common.tryAgain")}
         />
       )}
       {status === "success" && items.length === 0 && (
-        <EmptyState title="No results" description="Try a different search term." />
+        <EmptyState title={t("search.noResultsTitle")} description={t("search.noResultsDescription")} />
       )}
 
       <div className={styles.list}>

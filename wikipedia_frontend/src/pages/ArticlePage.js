@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import i18n from "../i18n";
 import {
   getArticleCacheKeys,
   getArticleCategories,
@@ -20,6 +22,7 @@ import styles from "./ArticlePage.module.css";
 // PUBLIC_INTERFACE
 export default function ArticlePage() {
   /** Displays a Wikipedia article by title. */
+  const { t } = useTranslation();
   const { title: encodedTitle } = useParams();
   const location = useLocation();
   const title = useMemo(() => decodeURIComponent(encodedTitle || ""), [encodedTitle]);
@@ -60,7 +63,7 @@ export default function ArticlePage() {
     setError("");
     setIsRefreshing(false);
 
-    const keys = getArticleCacheKeys(title);
+    const keys = getArticleCacheKeys(title, { lang: i18n.language });
     activeKeysRef.current = keys;
 
     // If we have cached data, show it immediately and allow SWR to refresh in background.
@@ -121,6 +124,7 @@ export default function ArticlePage() {
         const [s, h, c, r] = await Promise.all([
           getArticleSummary(title, {
             signal: controller.signal,
+            lang: i18n.language,
             persist: true,
             onUpdate: (value, meta) => {
               if (!active) return;
@@ -132,6 +136,7 @@ export default function ArticlePage() {
           }),
           getArticleHtml(title, {
             signal: controller.signal,
+            lang: i18n.language,
             onUpdate: (value, meta) => {
               if (!active) return;
               if (controller.signal.aborted) return;
@@ -140,9 +145,10 @@ export default function ArticlePage() {
               setIsRefreshing(meta.stale);
             },
           }),
-          getArticleCategories(title, 25, { signal: controller.signal }),
+          getArticleCategories(title, 25, { signal: controller.signal, lang: i18n.language }),
           getArticleRelated(title, {
             signal: controller.signal,
+            lang: i18n.language,
             onUpdate: (value, meta) => {
               if (!active) return;
               if (controller.signal.aborted) return;
@@ -184,16 +190,16 @@ export default function ArticlePage() {
   }, [title]);
 
   if (status === "loading") {
-    return <LoadingState title="Loading article…" />;
+    return <LoadingState title={t("article.loading")} />;
   }
 
   if (status === "error") {
     return (
       <ErrorState
-        title={`Unable to load “${title}”.`}
-        description={error}
+        title={t("article.unableToLoad", { title })}
+        description={error || t("article.failedToLoad")}
         onRetry={() => setStatus("loading")}
-        retryLabel="Try again"
+        retryLabel={t("common.tryAgain")}
       />
     );
   }
@@ -205,29 +211,28 @@ export default function ArticlePage() {
     <div className={styles.layout}>
       <main className={styles.main}>
         {fromCategory?.name ? (
-          <nav className={styles.breadcrumbs} aria-label="Breadcrumb">
+          <nav className={styles.breadcrumbs} aria-label={t("common.breadcrumb")}>
             <Link className={styles.crumbLink} to="/">
-              Home
+              {t("article.breadcrumbs.home")}
             </Link>
             <span className={styles.crumbSep} aria-hidden="true">
               /
             </span>
             <Link
               className={styles.crumbLink}
-              to={
-                fromCategory.path ||
-                `/category/${encodeURIComponent(fromCategory.name)}`
-              }
+              to={fromCategory.path || `/category/${encodeURIComponent(fromCategory.name)}`}
               state={{
                 restoreScrollY: fromCategory.restoreScrollY,
               }}
             >
-              Category: {fromCategory.title || fromCategory.name}
+              {t("article.breadcrumbs.categoryPrefix", {
+                category: fromCategory.title || fromCategory.name,
+              })}
             </Link>
             <span className={styles.crumbSep} aria-hidden="true">
               /
             </span>
-            <span className={styles.crumbCurrent}>Article</span>
+            <span className={styles.crumbCurrent}>{t("article.breadcrumbs.article")}</span>
           </nav>
         ) : null}
 
@@ -237,18 +242,18 @@ export default function ArticlePage() {
             <div className={styles.description}>
               {summary.description}
               {typeof navigator !== "undefined" && navigator.onLine === false
-                ? " • Offline (cached)"
+                ? ` • ${t("offline.cached")}`
                 : null}
-              {isRefreshing ? " • Updating…" : null}
+              {isRefreshing ? ` • ${t("common.updating")}` : null}
             </div>
           ) : isRefreshing ? (
             <div className={styles.description}>
               {typeof navigator !== "undefined" && navigator.onLine === false
-                ? "Offline (cached)"
-                : "Updating…"}
+                ? t("offline.cached")
+                : t("common.updating")}
             </div>
           ) : typeof navigator !== "undefined" && navigator.onLine === false ? (
-            <div className={styles.description}>Offline (cached)</div>
+            <div className={styles.description}>{t("offline.cached")}</div>
           ) : null}
         </div>
 
@@ -263,7 +268,7 @@ export default function ArticlePage() {
         />
 
         <div className={styles.bottomMeta}>
-          <div className={styles.metaTitle}>Categories</div>
+          <div className={styles.metaTitle}>{t("article.categories")}</div>
           {categories.length > 0 ? (
             <CategoryList
               categories={categories}
@@ -274,7 +279,7 @@ export default function ArticlePage() {
               }}
             />
           ) : (
-            <div className={styles.metaEmpty}>No categories found.</div>
+            <div className={styles.metaEmpty}>{t("article.noCategories")}</div>
           )}
         </div>
       </main>
@@ -282,14 +287,14 @@ export default function ArticlePage() {
       <aside className={styles.sidebar}>
         <div className={styles.sideCard}>
           <div className={styles.sideHeader}>
-            <div className={styles.sideTitle}>Related</div>
+            <div className={styles.sideTitle}>{t("article.related")}</div>
             <Link className={styles.sideLink} to={`/search?q=${encodeURIComponent(title)}`}>
-              Search similar
+              {t("article.searchSimilar")}
             </Link>
           </div>
 
           {related.length === 0 ? (
-            <div className={styles.metaEmpty}>No related articles available.</div>
+            <div className={styles.metaEmpty}>{t("article.noRelated")}</div>
           ) : (
             <div className={styles.relatedList}>
               {related.map((r) => (

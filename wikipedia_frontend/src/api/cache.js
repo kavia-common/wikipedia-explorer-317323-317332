@@ -284,15 +284,24 @@ const events = new CacheEvents();
  * Keep stable and explicit to avoid accidental collisions.
  */
 export const cacheKeys = {
-  search: (query, limit) => `search:q=${String(query).trim().toLowerCase()}:l=${limit}`,
-  suggestions: (query, limit) =>
-    `suggest:q=${String(query).trim().toLowerCase()}:l=${limit}`,
-  summary: (title) => `summary:t=${String(title).trim()}`,
-  html: (title) => `html:t=${String(title).trim()}`,
-  related: (title) => `related:t=${String(title).trim()}`,
-  categories: (title, limit) => `categories:t=${String(title).trim()}:l=${limit}`,
-  categoryMembers: (category, limit) =>
-    `catMembers:c=${String(category).trim()}:l=${limit}`,
+  search: (query, limit, { lang = "en" } = {}) =>
+    `lang=${String(lang).trim().toLowerCase()}:search:q=${String(query)
+      .trim()
+      .toLowerCase()}:l=${limit}`,
+  suggestions: (query, limit, { lang = "en" } = {}) =>
+    `lang=${String(lang).trim().toLowerCase()}:suggest:q=${String(query)
+      .trim()
+      .toLowerCase()}:l=${limit}`,
+  summary: (title, { lang = "en" } = {}) =>
+    `lang=${String(lang).trim().toLowerCase()}:summary:t=${String(title).trim()}`,
+  html: (title, { lang = "en" } = {}) =>
+    `lang=${String(lang).trim().toLowerCase()}:html:t=${String(title).trim()}`,
+  related: (title, { lang = "en" } = {}) =>
+    `lang=${String(lang).trim().toLowerCase()}:related:t=${String(title).trim()}`,
+  categories: (title, limit, { lang = "en" } = {}) =>
+    `lang=${String(lang).trim().toLowerCase()}:categories:t=${String(title).trim()}:l=${limit}`,
+  categoryMembers: (category, limit, { lang = "en" } = {}) =>
+    `lang=${String(lang).trim().toLowerCase()}:catMembers:c=${String(category).trim()}:l=${limit}`,
 };
 
 /**

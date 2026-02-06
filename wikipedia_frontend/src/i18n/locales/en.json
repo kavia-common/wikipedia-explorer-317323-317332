@@ -1,0 +1,98 @@
+{
+  "app": {
+    "name": "Wikipedia Explorer",
+    "tagline": "Search • Read • Browse categories",
+    "dataFrom": "Data from",
+    "base": "Base",
+    "tipFooter": "Tip: Click categories below an article to explore more pages."
+  },
+  "nav": {
+    "skipToContent": "Skip to content",
+    "skipToSearch": "Skip to search",
+    "homeAria": "Wikipedia Explorer Home",
+    "siteSearchAria": "Site search",
+    "language": "Language"
+  },
+  "language": {
+    "english": "English",
+    "spanish": "Español"
+  },
+  "offline": {
+    "banner": "You’re offline. Previously viewed pages may still be available.",
+    "cached": "Offline (cached)"
+  },
+  "common": {
+    "loading": "Loading…",
+    "tryAgain": "Try again",
+    "reload": "Reload",
+    "updating": "Updating…",
+    "search": "Search",
+    "breadcrumb": "Breadcrumb"
+  },
+  "search": {
+    "placeholder": "Search Wikipedia…",
+    "ariaLabel": "Search Wikipedia",
+    "suggestionsAria": "Suggestions",
+    "loadingSuggestions": "Loading…",
+    "recentOffline": "Recent searches (offline)",
+    "emptyTitle": "Search Wikipedia",
+    "emptyDescription": "Enter a query in the search bar to get results.",
+    "resultsFor": "Results for “{{q}}”",
+    "resultsCount": "{{count}} results",
+    "loadingResults": "Loading results…",
+    "unableToLoadResults": "Unable to load results",
+    "failedToLoadResults": "Failed to load search results.",
+    "noResultsTitle": "No results",
+    "noResultsDescription": "Try a different search term."
+  },
+  "home": {
+    "subtitle": "Search, read, and browse categories—powered directly by the public Wikipedia API.",
+    "trySearchingFor": "Try searching for",
+    "trySearchingForExamples": "“Solar eclipse”, “Ada Lovelace”, “Jazz”, “Machine learning”",
+    "browseCategories": "Browse categories",
+    "browseCategoriesBody": "Open an article and explore its categories to discover more pages."
+  },
+  "article": {
+    "loading": "Loading article…",
+    "unableToLoad": "Unable to load “{{title}}”.",
+    "failedToLoad": "Failed to load article.",
+    "categories": "Categories",
+    "noCategories": "No categories found.",
+    "related": "Related",
+    "searchSimilar": "Search similar",
+    "noRelated": "No related articles available.",
+    "breadcrumbs": {
+      "home": "Home",
+      "categoryPrefix": "Category: {{category}}",
+      "article": "Article"
+    }
+  },
+  "category": {
+    "titlePrefix": "Category: {{category}}",
+    "subtitle": "Browse pages in this category.",
+    "subcategories": "Subcategories",
+    "subcategoriesAria": "Subcategories",
+    "loadingTitle": "Loading category…",
+    "loadingDescription": "Fetching category members.",
+    "unableToLoad": "Unable to load category",
+    "failedToLoadMembers": "Failed to load category members.",
+    "noPagesTitle": "No pages found",
+    "noPagesDescription": "This category may be empty or unavailable.",
+    "loadMore": "Load more",
+    "loadingMore": "Loading…",
+    "failedToLoadMore": "Failed to load more pages.",
+    "endOfCategory": "You’ve reached the end of this category.",
+    "breadcrumbs": {
+      "home": "Home",
+      "category": "Category"
+    }
+  },
+  "errors": {
+    "boundaryTitle": "We hit a snag",
+    "boundaryDescription": "An unexpected error occurred while rendering the page.",
+    "somethingWentWrong": "Something went wrong"
+  },
+  "uiStates": {
+    "emptyDefaultTitle": "Nothing here yet"
+  }
+}

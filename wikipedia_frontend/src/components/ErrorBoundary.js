@@ -1,4 +1,5 @@
 import React from "react";
+import { withTranslation } from "react-i18next";
 import ErrorState from "./ErrorState";
 
 /**
@@ -22,20 +23,20 @@ class ErrorBoundaryImpl extends React.Component {
   }
 
   render() {
+    const { t } = this.props;
     if (this.state.hasError) {
       return (
         <ErrorState
-          title="We hit a snag"
+          title={t("errors.boundaryTitle")}
           description={
-            this.state.error?.message ||
-            "An unexpected error occurred while rendering the page."
+            this.state.error?.message || t("errors.boundaryDescription")
           }
           onRetry={() => {
             this.setState({ hasError: false, error: null });
             // In SPAs it's usually safest to hard-reload to reset state.
             window.location.reload();
           }}
-          retryLabel="Reload"
+          retryLabel={t("common.reload")}
         />
       );
     }
@@ -45,7 +46,10 @@ class ErrorBoundaryImpl extends React.Component {
 }
 
 // PUBLIC_INTERFACE
-export default function ErrorBoundary({ children }) {
+function ErrorBoundary({ children }) {
   /** Global error boundary wrapper used at the root of the app. */
   return <ErrorBoundaryImpl>{children}</ErrorBoundaryImpl>;
 }
+
+// PUBLIC_INTERFACE
+export default withTranslation()(ErrorBoundary);

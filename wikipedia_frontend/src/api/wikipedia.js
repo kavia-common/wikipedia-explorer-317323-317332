@@ -3,23 +3,54 @@ import { cacheKeys, expireCacheKey, getCacheStatus, subscribeCache, swrRequest, 
 const DEFAULT_WIKI_BASE = "https://en.wikipedia.org";
 
 /**
- * NOTE: This app can optionally use REACT_APP_API_BASE as the Wikipedia base URL.
- * In this template .env, REACT_APP_API_BASE might point to a backend. We do not
- * depend on a backend, but if it is set to a Wikipedia domain (or proxy),
- * we will prefer it.
+ * NOTE about REACT_APP_API_BASE:
+ * - This template can optionally use REACT_APP_API_BASE as a base URL (e.g. a proxy).
+ * - For Phase 8 i18n we primarily target language subdomains (en.wikipedia.org, es.wikipedia.org, ...).
+ * - If REACT_APP_API_BASE is set AND looks like a full URL, we will use it as-is (no subdomain switching),
+ *   because we cannot safely infer how a proxy wants language routing.
  */
-const WIKI_BASE =
-  (process.env.REACT_APP_API_BASE && process.env.REACT_APP_API_BASE.trim()) ||
-  DEFAULT_WIKI_BASE;
+const ENV_WIKI_BASE =
+  (process.env.REACT_APP_API_BASE && process.env.REACT_APP_API_BASE.trim()) || "";
 
-// Some endpoints are on REST, others on MediaWiki Action API.
-const REST_BASE = `${WIKI_BASE.replace(/\/$/, "")}/api/rest_v1`;
-const ACTION_API = `${WIKI_BASE.replace(/\/$/, "")}/w/api.php`;
+/**
+ * Track UI language in memory so the API layer (and cache keys) can be language-aware
+ * without React dependencies.
+ */
+let currentLanguage = "en";
+
+function normalizeLang(lang) {
+  const raw = String(lang || "").trim().toLowerCase();
+  if (!raw) return "en";
+  return raw.split("-")[0] || "en";
+}
+
+function buildLanguageWikiBase(lang) {
+  const l = normalizeLang(lang);
+  return `https://${l}.wikipedia.org`;
+}
+
+function resolveWikiBase(lang) {
+  // If explicitly configured, prefer the env base (proxy/custom base).
+  if (ENV_WIKI_BASE) return ENV_WIKI_BASE;
+  return buildLanguageWikiBase(lang);
+}
 
 // PUBLIC_INTERFACE
-export function getWikipediaBaseUrl() {
-  /** Returns the configured Wikipedia base URL used by the API layer. */
-  return WIKI_BASE;
+export function setWikipediaLanguage(lang) {
+  /** Set current language for Wikipedia API requests + cache key construction. */
+  currentLanguage = normalizeLang(lang);
+}
+
+// PUBLIC_INTERFACE
+export function getWikipediaLanguage() {
+  /** Get current language used for Wikipedia API requests + cache keys. */
+  return currentLanguage;
+}
+
+// PUBLIC_INTERFACE
+export function getWikipediaBaseUrl(lang = currentLanguage) {
+  /** Returns the Wikipedia base URL used by the API layer for a given language. */
+  return resolveWikiBase(lang);
 }
 
 /**
@@ -60,8 +91,16 @@ async function fetchText(url, options = {}) {
   return res.text();
 }
 
-function buildActionApiUrl(params) {
-  const url = new URL(ACTION_API);
+function getRestBase(lang) {
+  return `${getWikipediaBaseUrl(lang).replace(/\/$/, "")}/api/rest_v1`;
+}
+
+function getActionApiBase(lang) {
+  return `${getWikipediaBaseUrl(lang).replace(/\/$/, "")}/w/api.php`;
+}
+
+function buildActionApiUrl(params, { lang = currentLanguage } = {}) {
+  const url = new URL(getActionApiBase(lang));
   // CORS: MediaWiki API supports origin=*
   url.searchParams.set("origin", "*");
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, String(v)));
@@ -91,22 +130,26 @@ function buildActionApiUrl(params) {
 export async function searchPages(query, limit = 20, options = {}) {
   /** Search for pages using MediaWiki Action API with caching + SWR + de-dupe. */
   const q = String(query || "").trim();
-  const key = cacheKeys.search(q, limit);
+  const lang = options.lang ? normalizeLang(options.lang) : currentLanguage;
+  const key = cacheKeys.search(q, limit, { lang });
 
-  const url = buildActionApiUrl({
-    action: "query",
-    format: "json",
-    generator: "search",
-    gsrsearch: q,
-    gsrlimit: limit,
-    prop: "pageimages|description|extracts",
-    exintro: 1,
-    explaintext: 1,
-    exsentences: 2,
-    piprop: "thumbnail",
-    pithumbsize: 320,
-    pilimit: limit,
-  });
+  const url = buildActionApiUrl(
+    {
+      action: "query",
+      format: "json",
+      generator: "search",
+      gsrsearch: q,
+      gsrlimit: limit,
+      prop: "pageimages|description|extracts",
+      exintro: 1,
+      explaintext: 1,
+      exsentences: 2,
+      piprop: "thumbnail",
+      pithumbsize: 320,
+      pilimit: limit,
+    },
+    { lang }
+  );
 
   const fetcher = async () => {
     const data = await fetchJson(url, { signal: options.signal });
@@ -136,15 +179,19 @@ export async function searchPages(query, limit = 20, options = {}) {
 export async function getSearchSuggestions(query, limit = 8, options = {}) {
   /** Get typeahead suggestions (OpenSearch). Caching is helpful but short TTL. */
   const q = String(query || "").trim();
-  const key = cacheKeys.suggestions(q, limit);
+  const lang = options.lang ? normalizeLang(options.lang) : currentLanguage;
+  const key = cacheKeys.suggestions(q, limit, { lang });
 
-  const url = buildActionApiUrl({
-    action: "opensearch",
-    format: "json",
-    search: q,
-    limit,
-    namespace: 0,
-  });
+  const url = buildActionApiUrl(
+    {
+      action: "opensearch",
+      format: "json",
+      search: q,
+      limit,
+      namespace: 0,
+    },
+    { lang }
+  );
 
   const fetcher = async () => {
     const data = await fetchJson(url, { signal: options.signal });
@@ -166,8 +213,9 @@ export async function getSearchSuggestions(query, limit = 8, options = {}) {
 export async function getArticleSummary(title, options = {}) {
   /** Fetch article summary via REST API with caching + SWR + de-dupe. */
   const t = String(title || "").trim();
-  const key = cacheKeys.summary(t);
-  const url = `${REST_BASE}/page/summary/${encodeURIComponent(t)}`;
+  const lang = options.lang ? normalizeLang(options.lang) : currentLanguage;
+  const key = cacheKeys.summary(t, { lang });
+  const url = `${getRestBase(lang)}/page/summary/${encodeURIComponent(t)}`;
 
   const fetcher = async () => fetchJson(url, { signal: options.signal });
 
@@ -184,8 +232,9 @@ export async function getArticleSummary(title, options = {}) {
 export async function getArticleHtml(title, options = {}) {
   /** Fetch full article HTML via REST API with caching + SWR + de-dupe. */
   const t = String(title || "").trim();
-  const key = cacheKeys.html(t);
-  const url = `${REST_BASE}/page/html/${encodeURIComponent(t)}`;
+  const lang = options.lang ? normalizeLang(options.lang) : currentLanguage;
+  const key = cacheKeys.html(t, { lang });
+  const url = `${getRestBase(lang)}/page/html/${encodeURIComponent(t)}`;
 
   const fetcher = async () => fetchText(url, { signal: options.signal });
 
@@ -203,8 +252,9 @@ export async function getArticleHtml(title, options = {}) {
 export async function getArticleRelated(title, options = {}) {
   /** Fetch related pages via REST API with caching + SWR + de-dupe. */
   const t = String(title || "").trim();
-  const key = cacheKeys.related(t);
-  const url = `${REST_BASE}/page/related/${encodeURIComponent(t)}`;
+  const lang = options.lang ? normalizeLang(options.lang) : currentLanguage;
+  const key = cacheKeys.related(t, { lang });
+  const url = `${getRestBase(lang)}/page/related/${encodeURIComponent(t)}`;
 
   const fetcher = async () => {
     const data = await fetchJson(url, { signal: options.signal });
@@ -230,15 +280,19 @@ export async function getArticleRelated(title, options = {}) {
 export async function getArticleCategories(title, limit = 20, options = {}) {
   /** Fetch categories for an article via Action API with caching + SWR + de-dupe. */
   const t = String(title || "").trim();
-  const key = cacheKeys.categories(t, limit);
+  const lang = options.lang ? normalizeLang(options.lang) : currentLanguage;
+  const key = cacheKeys.categories(t, limit, { lang });
 
-  const url = buildActionApiUrl({
-    action: "query",
-    format: "json",
-    titles: t,
-    prop: "categories",
-    cllimit: limit,
-  });
+  const url = buildActionApiUrl(
+    {
+      action: "query",
+      format: "json",
+      titles: t,
+      prop: "categories",
+      cllimit: limit,
+    },
+    { lang }
+  );
 
   const fetcher = async () => {
     const data = await fetchJson(url, { signal: options.signal });
@@ -264,16 +318,20 @@ export async function getArticleCategories(title, limit = 20, options = {}) {
 export async function getCategoryMembers(category, limit = 30, options = {}) {
   /** Fetch members of a category via Action API with caching + SWR + de-dupe. */
   const c = String(category || "").trim();
-  const key = cacheKeys.categoryMembers(c, limit);
+  const lang = options.lang ? normalizeLang(options.lang) : currentLanguage;
+  const key = cacheKeys.categoryMembers(c, limit, { lang });
 
-  const url = buildActionApiUrl({
-    action: "query",
-    format: "json",
-    list: "categorymembers",
-    cmtitle: `Category:${c}`,
-    cmlimit: limit,
-    cmnamespace: 0,
-  });
+  const url = buildActionApiUrl(
+    {
+      action: "query",
+      format: "json",
+      list: "categorymembers",
+      cmtitle: `Category:${c}`,
+      cmlimit: limit,
+      cmnamespace: 0,
+    },
+    { lang }
+  );
 
   const fetcher = async () => {
     const data = await fetchJson(url, { signal: options.signal });
@@ -305,16 +363,20 @@ export async function getCategoryMembersPage(
    * Returns both the items and the next `continueToken` if more results exist.
    */
   const c = String(category || "").trim();
+  const lang = options.lang ? normalizeLang(options.lang) : currentLanguage;
 
-  const url = buildActionApiUrl({
-    action: "query",
-    format: "json",
-    list: "categorymembers",
-    cmtitle: `Category:${c}`,
-    cmlimit: limit,
-    cmnamespace: 0,
-    ...(continueToken ? { cmcontinue: continueToken } : {}),
-  });
+  const url = buildActionApiUrl(
+    {
+      action: "query",
+      format: "json",
+      list: "categorymembers",
+      cmtitle: `Category:${c}`,
+      cmlimit: limit,
+      cmnamespace: 0,
+      ...(continueToken ? { cmcontinue: continueToken } : {}),
+    },
+    { lang }
+  );
 
   const data = await fetchJson(url, { signal: options.signal });
   const members = data?.query?.categorymembers || [];
@@ -340,16 +402,20 @@ export async function getCategorySubcategories(
    * without the `Category:` prefix.
    */
   const c = String(category || "").trim();
+  const lang = options.lang ? normalizeLang(options.lang) : currentLanguage;
 
-  const url = buildActionApiUrl({
-    action: "query",
-    format: "json",
-    list: "categorymembers",
-    cmtitle: `Category:${c}`,
-    cmlimit: limit,
-    cmnamespace: 14,
-    ...(continueToken ? { cmcontinue: continueToken } : {}),
-  });
+  const url = buildActionApiUrl(
+    {
+      action: "query",
+      format: "json",
+      list: "categorymembers",
+      cmtitle: `Category:${c}`,
+      cmlimit: limit,
+      cmnamespace: 14,
+      ...(continueToken ? { cmcontinue: continueToken } : {}),
+    },
+    { lang }
+  );
 
   const data = await fetchJson(url, { signal: options.signal });
   const members = data?.query?.categorymembers || [];
@@ -367,20 +433,26 @@ export async function getCategorySubcategories(
  * Phase 3 cache utilities (optional for pages).
  */
 
+/**
+ * Phase 3 cache utilities (optional for pages).
+ */
+
 // PUBLIC_INTERFACE
-export function getSearchCacheKey(query, limit = 20) {
-  /** Returns the cache key used for a given search query+limit. */
-  return cacheKeys.search(String(query || "").trim(), limit);
+export function getSearchCacheKey(query, limit = 20, { lang } = {}) {
+  /** Returns the cache key used for a given search query+limit (+language). */
+  const l = lang ? normalizeLang(lang) : currentLanguage;
+  return cacheKeys.search(String(query || "").trim(), limit, { lang: l });
 }
 
 // PUBLIC_INTERFACE
-export function getArticleCacheKeys(title) {
-  /** Returns the cache keys used for an article's main resources (summary/html/related). */
+export function getArticleCacheKeys(title, { lang } = {}) {
+  /** Returns the cache keys used for an article's main resources (summary/html/related) (+language). */
   const t = String(title || "").trim();
+  const l = lang ? normalizeLang(lang) : currentLanguage;
   return {
-    summary: cacheKeys.summary(t),
-    html: cacheKeys.html(t),
-    related: cacheKeys.related(t),
+    summary: cacheKeys.summary(t, { lang: l }),
+    html: cacheKeys.html(t, { lang: l }),
+    related: cacheKeys.related(t, { lang: l }),
   };
 }
 

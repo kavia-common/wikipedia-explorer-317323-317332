@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getSearchSuggestions } from "../api/wikipedia";
+import i18n from "../i18n";
 import styles from "./SearchBar.module.css";
 
 const RECENT_SEARCHES_KEY = "wiki_recent_searches_v1";
@@ -46,6 +48,7 @@ function addRecentSearch(query) {
 // PUBLIC_INTERFACE
 export default function SearchBar({ initialQuery = "", onSubmit, inputId }) {
   /** Search bar with suggestions; calls onSubmit(query) when submitted. */
+  const { t } = useTranslation();
   const [value, setValue] = useState(initialQuery);
 
   // The list currently shown in the listbox (API suggestions or recent searches fallback).
@@ -132,6 +135,7 @@ export default function SearchBar({ initialQuery = "", onSubmit, inputId }) {
         try {
           const list = await getSearchSuggestions(q, 8, {
             signal: controller.signal,
+            lang: i18n.language,
           });
           if (!active) return;
           setItems(list);
@@ -242,8 +246,8 @@ export default function SearchBar({ initialQuery = "", onSubmit, inputId }) {
               }
             }
           }}
-          placeholder="Search Wikipedia…"
-          aria-label="Search Wikipedia"
+          placeholder={t("search.placeholder")}
+          aria-label={t("search.ariaLabel")}
           role="combobox"
           aria-autocomplete="list"
           aria-expanded={showListbox}
@@ -251,7 +255,7 @@ export default function SearchBar({ initialQuery = "", onSubmit, inputId }) {
           aria-activedescendant={activeDescendantId}
         />
         <button className={styles.button} type="submit">
-          Search
+          {t("common.search")}
         </button>
       </form>
 
@@ -260,13 +264,15 @@ export default function SearchBar({ initialQuery = "", onSubmit, inputId }) {
           className={styles.suggestions}
           role="listbox"
           id={listboxId}
-          aria-label="Suggestions"
+          aria-label={t("search.suggestionsAria")}
         >
-          {loading && <div className={styles.suggestionHint}>Loading…</div>}
+          {loading && (
+            <div className={styles.suggestionHint}>{t("search.loadingSuggestions")}</div>
+          )}
 
           {!loading && !isOnline() && recentSearches.length > 0 ? (
             <div className={styles.sectionHint} aria-hidden="true">
-              Recent searches (offline)
+              {t("search.recentOffline")}
             </div>
           ) : null}
 

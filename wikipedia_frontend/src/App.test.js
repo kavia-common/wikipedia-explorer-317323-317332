@@ -24,7 +24,8 @@ describe("App", () => {
     );
 
     // Be specific to avoid multiple matches ("Wikipedia Explorer" appears in hero too).
-    const homeLink = screen.getByRole("link", { name: /wikipedia explorer home/i });
+    // Now translated, so accept English/Spanish.
+    const homeLink = screen.getByRole("link", { name: /wikipedia explorer home|inicio del explorador/i });
     expect(homeLink).toBeInTheDocument();
   });
 
@@ -39,7 +40,7 @@ describe("App", () => {
       </BrowserRouter>
     );
 
-    const input = screen.getByRole("combobox", { name: /search wikipedia/i });
+    const input = screen.getByRole("combobox", { name: /search wikipedia|buscar en wikipedia/i });
 
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     await user.click(input);

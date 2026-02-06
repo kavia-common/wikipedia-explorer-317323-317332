@@ -32,7 +32,7 @@ describe("SearchBar", () => {
     const onSubmit = jest.fn();
     render(<SearchBar onSubmit={onSubmit} inputId="site-search" />);
 
-    const input = screen.getByRole("combobox", { name: /search wikipedia/i });
+    const input = screen.getByRole("combobox", { name: /search wikipedia|buscar en wikipedia/i });
 
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
@@ -56,7 +56,7 @@ describe("SearchBar", () => {
     );
 
     // Suggestions should become visible.
-    expect(await screen.findByRole("listbox", { name: /suggestions/i })).toBeInTheDocument();
+    expect(await screen.findByRole("listbox", { name: /suggestions|sugerencias/i })).toBeInTheDocument();
 
     jest.useRealTimers();
   });
@@ -81,7 +81,7 @@ describe("SearchBar", () => {
       jest.advanceTimersByTime(350);
     });
 
-    const listbox = await screen.findByRole("listbox", { name: /suggestions/i });
+    const listbox = await screen.findByRole("listbox", { name: /suggestions|sugerencias/i });
     expect(input).toHaveAttribute("aria-expanded", "true");
     expect(input).toHaveAttribute("aria-controls", listbox.getAttribute("id"));
 
@@ -115,7 +115,7 @@ describe("SearchBar", () => {
     expect(await screen.findByRole("listbox", { name: /suggestions/i })).toBeInTheDocument();
 
     await user.keyboard("{Escape}");
-    expect(screen.queryByRole("listbox", { name: /suggestions/i })).toBeNull();
+    expect(screen.queryByRole("listbox", { name: /suggestions|sugerencias/i })).toBeNull();
     expect(input).toHaveAttribute("aria-expanded", "false");
 
     jest.useRealTimers();
@@ -132,13 +132,15 @@ describe("SearchBar", () => {
     const onSubmit = jest.fn();
     render(<SearchBar onSubmit={onSubmit} inputId="site-search" />);
 
-    const input = screen.getByRole("combobox", { name: /search wikipedia/i });
+    const input = screen.getByRole("combobox", { name: /search wikipedia|buscar en wikipedia/i });
     const user = userEvent.setup();
 
     await user.click(input);
 
-    const listbox = await screen.findByRole("listbox", { name: /suggestions/i });
-    expect(within(listbox).getByText(/recent searches \(offline\)/i)).toBeInTheDocument();
+    const listbox = await screen.findByRole("listbox", { name: /suggestions|sugerencias/i });
+    expect(
+      within(listbox).getByText(/recent searches \(offline\)|búsquedas recientes \(sin conexión\)/i)
+    ).toBeInTheDocument();
 
     const cats = within(listbox).getByRole("option", { name: "Cats" });
     await user.click(cats);
@@ -157,7 +159,7 @@ describe("SearchBar", () => {
 
     render(<SearchBar onSubmit={jest.fn()} inputId="site-search" />);
 
-    const input = screen.getByRole("combobox", { name: /search wikipedia/i });
+    const input = screen.getByRole("combobox", { name: /search wikipedia|buscar en wikipedia/i });
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
     await user.click(input);

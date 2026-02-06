@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { triggerResync } from "../pwa/serviceWorkerRegistration";
 import styles from "./OfflineBanner.module.css";
 
@@ -10,6 +11,7 @@ function getOnline() {
 // PUBLIC_INTERFACE
 export default function OfflineBanner() {
   /** Visible banner when offline; triggers cache resync when back online. */
+  const { t } = useTranslation();
   const [online, setOnline] = useState(getOnline());
 
   useEffect(() => {
@@ -36,9 +38,7 @@ export default function OfflineBanner() {
 
   return (
     <div className={styles.banner} role="status" aria-live="polite">
-      <div className={styles.text}>
-        You’re offline. Previously viewed pages may still be available.
-      </div>
+      <div className={styles.text}>{t("offline.banner")}</div>
     </div>
   );
 }
