@@ -1,0 +1,43 @@
+.panel {
+  color: var(--secondary);
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  background: rgba(100, 116, 139, 0.05);
+}
+
+.title {
+  color: rgba(17, 24, 39, 0.92);
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.description {
+  color: rgba(17, 24, 39, 0.75);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.errorPanel {
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.errorTitle {
+  font-weight: 900;
+  margin-bottom: 6px;
+  color: rgba(17, 24, 39, 0.92);
+}
+
+.retryButton {
+  margin-top: 10px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}

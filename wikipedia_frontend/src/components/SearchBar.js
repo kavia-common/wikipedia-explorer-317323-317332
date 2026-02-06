@@ -29,11 +29,15 @@ export default function SearchBar({ initialQuery = "", onSubmit }) {
 
     (async () => {
       try {
-        const list = await getSearchSuggestions(value.trim(), 8);
+        const list = await getSearchSuggestions(value.trim(), 8, {
+          signal: controller.signal,
+        });
         if (!active) return;
         setSuggestions(list);
-      } catch {
+      } catch (e) {
+        // AbortError is expected during fast typing / navigation.
         if (!active) return;
+        if (e?.name === "AbortError") return;
         setSuggestions([]);
       } finally {
         if (active) setLoading(false);

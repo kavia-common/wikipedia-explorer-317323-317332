@@ -8,6 +8,8 @@ import {
 } from "../api/wikipedia";
 import ArticleCard from "../components/ArticleCard";
 import CategoryList from "../components/CategoryList";
+import ErrorState from "../components/ErrorState";
+import LoadingState from "../components/LoadingState";
 import { sanitizeWikipediaHtml } from "../utils/sanitizeHtml";
 import styles from "./ArticlePage.module.css";
 
@@ -31,7 +33,9 @@ export default function ArticlePage() {
   useEffect(() => {
     if (!title) return;
 
+    const controller = new AbortController();
     let active = true;
+
     setStatus("loading");
     setError("");
     setSummary(null);
@@ -42,10 +46,10 @@ export default function ArticlePage() {
     (async () => {
       try {
         const [s, h, c, r] = await Promise.all([
-          getArticleSummary(title),
-          getArticleHtml(title),
-          getArticleCategories(title, 25),
-          getArticleRelated(title),
+          getArticleSummary(title, { signal: controller.signal }),
+          getArticleHtml(title, { signal: controller.signal }),
+          getArticleCategories(title, 25, { signal: controller.signal }),
+          getArticleRelated(title, { signal: controller.signal }),
         ]);
         if (!active) return;
 
@@ -56,6 +60,7 @@ export default function ArticlePage() {
         setStatus("success");
       } catch (e) {
         if (!active) return;
+        if (e?.name === "AbortError") return;
         setStatus("error");
         setError(e?.message || "Failed to load article.");
       }
@@ -63,19 +68,22 @@ export default function ArticlePage() {
 
     return () => {
       active = false;
+      controller.abort();
     };
   }, [title]);
 
   if (status === "loading") {
-    return <div className={styles.state}>Loading article…</div>;
+    return <LoadingState title="Loading article…" />;
   }
 
   if (status === "error") {
     return (
-      <div className={styles.stateError}>
-        <div className={styles.errorTitle}>Unable to load “{title}”.</div>
-        <div className={styles.errorMsg}>{error}</div>
-      </div>
+      <ErrorState
+        title={`Unable to load “${title}”.`}
+        description={error}
+        onRetry={() => setStatus("loading")}
+        retryLabel="Try again"
+      />
     );
   }
 

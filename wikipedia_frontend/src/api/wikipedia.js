@@ -20,8 +20,17 @@ export function getWikipediaBaseUrl() {
   return WIKI_BASE;
 }
 
-async function fetchJson(url) {
-  const res = await fetch(url, { headers: { "Accept": "application/json" } });
+/**
+ * Small fetch helpers used by the API layer.
+ * Accept an optional AbortSignal so callers can cancel in-flight requests.
+ */
+async function fetchJson(url, options = {}) {
+  const { signal } = options;
+  const res = await fetch(url, {
+    signal,
+    headers: { Accept: "application/json" },
+  });
+
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     const err = new Error(`Wikipedia request failed (${res.status})`);
@@ -32,8 +41,13 @@ async function fetchJson(url) {
   return res.json();
 }
 
-async function fetchText(url) {
-  const res = await fetch(url, { headers: { "Accept": "text/html" } });
+async function fetchText(url, options = {}) {
+  const { signal } = options;
+  const res = await fetch(url, {
+    signal,
+    headers: { Accept: "text/html" },
+  });
+
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     const err = new Error(`Wikipedia request failed (${res.status})`);
@@ -52,8 +66,13 @@ function buildActionApiUrl(params) {
   return url.toString();
 }
 
+/**
+ * @typedef {Object} WikipediaRequestOptions
+ * @property {AbortSignal=} signal Optional AbortSignal to cancel the request.
+ */
+
 // PUBLIC_INTERFACE
-export async function searchPages(query, limit = 20) {
+export async function searchPages(query, limit = 20, options = {}) {
   /** Search for pages using MediaWiki Action API. */
   const url = buildActionApiUrl({
     action: "query",
@@ -70,7 +89,7 @@ export async function searchPages(query, limit = 20) {
     pilimit: limit,
   });
 
-  const data = await fetchJson(url);
+  const data = await fetchJson(url, options);
   const pages = Object.values(data?.query?.pages || {});
   // generator search returns unsorted object; sort by index if present.
   pages.sort((a, b) => (a?.index ?? 0) - (b?.index ?? 0));
@@ -85,7 +104,7 @@ export async function searchPages(query, limit = 20) {
 }
 
 // PUBLIC_INTERFACE
-export async function getSearchSuggestions(query, limit = 8) {
+export async function getSearchSuggestions(query, limit = 8, options = {}) {
   /** Get typeahead suggestions (OpenSearch). */
   const url = buildActionApiUrl({
     action: "opensearch",
@@ -95,31 +114,31 @@ export async function getSearchSuggestions(query, limit = 8) {
     namespace: 0,
   });
 
-  const data = await fetchJson(url);
+  const data = await fetchJson(url, options);
   // Response: [searchterm, [titles], [descriptions], [links]]
   const titles = Array.isArray(data) ? data[1] : [];
   return titles.map((t) => String(t));
 }
 
 // PUBLIC_INTERFACE
-export async function getArticleSummary(title) {
+export async function getArticleSummary(title, options = {}) {
   /** Fetch article summary (title, description, extract, thumbnail) via REST API. */
   const url = `${REST_BASE}/page/summary/${encodeURIComponent(title)}`;
-  return fetchJson(url);
+  return fetchJson(url, options);
 }
 
 // PUBLIC_INTERFACE
-export async function getArticleHtml(title) {
+export async function getArticleHtml(title, options = {}) {
   /** Fetch full article HTML via REST API. */
   const url = `${REST_BASE}/page/html/${encodeURIComponent(title)}`;
-  return fetchText(url);
+  return fetchText(url, options);
 }
 
 // PUBLIC_INTERFACE
-export async function getArticleRelated(title) {
+export async function getArticleRelated(title, options = {}) {
   /** Fetch related pages via REST API. */
   const url = `${REST_BASE}/page/related/${encodeURIComponent(title)}`;
-  const data = await fetchJson(url);
+  const data = await fetchJson(url, options);
   const pages = data?.pages || [];
   return pages.map((p) => ({
     title: p.title,
@@ -130,7 +149,7 @@ export async function getArticleRelated(title) {
 }
 
 // PUBLIC_INTERFACE
-export async function getArticleCategories(title, limit = 20) {
+export async function getArticleCategories(title, limit = 20, options = {}) {
   /** Fetch categories for an article via Action API. */
   const url = buildActionApiUrl({
     action: "query",
@@ -140,7 +159,7 @@ export async function getArticleCategories(title, limit = 20) {
     cllimit: limit,
   });
 
-  const data = await fetchJson(url);
+  const data = await fetchJson(url, options);
   const pages = Object.values(data?.query?.pages || {});
   const page = pages[0];
   const categories = page?.categories || [];
@@ -151,7 +170,7 @@ export async function getArticleCategories(title, limit = 20) {
 }
 
 // PUBLIC_INTERFACE
-export async function getCategoryMembers(category, limit = 30) {
+export async function getCategoryMembers(category, limit = 30, options = {}) {
   /** Fetch members of a category via Action API. */
   const url = buildActionApiUrl({
     action: "query",
@@ -162,7 +181,7 @@ export async function getCategoryMembers(category, limit = 30) {
     cmnamespace: 0,
   });
 
-  const data = await fetchJson(url);
+  const data = await fetchJson(url, options);
   const members = data?.query?.categorymembers || [];
   return members.map((m) => ({
     pageid: m.pageid,

@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { searchPages } from "../api/wikipedia";
 import ArticleCard from "../components/ArticleCard";
+import EmptyState from "../components/EmptyState";
+import ErrorState from "../components/ErrorState";
+import LoadingState from "../components/LoadingState";
 import styles from "./SearchResultsPage.module.css";
 
 function useQueryParam(name) {
@@ -24,18 +27,21 @@ export default function SearchResultsPage() {
       return;
     }
 
+    const controller = new AbortController();
     let active = true;
+
     setStatus("loading");
     setError("");
 
     (async () => {
       try {
-        const res = await searchPages(q.trim(), 20);
+        const res = await searchPages(q.trim(), 20, { signal: controller.signal });
         if (!active) return;
         setItems(res);
         setStatus("success");
       } catch (e) {
         if (!active) return;
+        if (e?.name === "AbortError") return;
         setStatus("error");
         setError(e?.message || "Failed to load search results.");
       }
@@ -43,14 +49,16 @@ export default function SearchResultsPage() {
 
     return () => {
       active = false;
+      controller.abort();
     };
   }, [q]);
 
   if (!q.trim()) {
     return (
-      <div className={styles.empty}>
-        Enter a query in the search bar to get results.
-      </div>
+      <EmptyState
+        title="Search Wikipedia"
+        description="Enter a query in the search bar to get results."
+      />
     );
   }
 
@@ -63,14 +71,20 @@ export default function SearchResultsPage() {
         </div>
       </div>
 
-      {status === "loading" && <div className={styles.state}>Loading…</div>}
+      {status === "loading" && <LoadingState title="Loading results…" />}
       {status === "error" && (
-        <div className={styles.stateError}>
-          {error || "Something went wrong."}
-        </div>
+        <ErrorState
+          title="Unable to load results"
+          description={error || "Something went wrong."}
+          onRetry={() => {
+            // Trigger effect by setting status; q is stable, so just re-run by forcing state update.
+            setStatus("loading");
+          }}
+          retryLabel="Try again"
+        />
       )}
       {status === "success" && items.length === 0 && (
-        <div className={styles.state}>No results found.</div>
+        <EmptyState title="No results" description="Try a different search term." />
       )}
 
       <div className={styles.list}>
