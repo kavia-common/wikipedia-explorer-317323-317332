@@ -1,49 +1,68 @@
-import React, { useState, useEffect } from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, { useMemo } from "react";
+import { Link, Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
+import "./App.css";
+import SearchBar from "./components/SearchBar";
+import HomePage from "./pages/HomePage";
+import SearchResultsPage from "./pages/SearchResultsPage";
+import ArticlePage from "./pages/ArticlePage";
+import CategoryPage from "./pages/CategoryPage";
+import { getWikipediaBaseUrl } from "./api/wikipedia";
 
-// PUBLIC_INTERFACE
-function App() {
-  const [theme, setTheme] = useState('light');
+function AppShell() {
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const q = params.get("q") || "";
 
-  // Effect to apply theme to document element
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
-
-  // PUBLIC_INTERFACE
-  const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-  };
+  const wikiBase = useMemo(() => getWikipediaBaseUrl(), []);
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-        </button>
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <p>
-          Current theme: <strong>{theme}</strong>
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+    <div className="AppShell">
+      <header className="TopNav">
+        <div className="TopNavInner">
+          <Link to="/" className="Brand" aria-label="Wikipedia Explorer Home">
+            <div className="BrandMark">W</div>
+            <div className="BrandText">
+              <div className="BrandTitle">Wikipedia Explorer</div>
+              <div className="BrandSubtitle">Search • Read • Browse categories</div>
+            </div>
+          </Link>
+
+          <div className="NavSpacer" />
+
+          <SearchBar
+            initialQuery={q}
+            onSubmit={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)}
+          />
+        </div>
       </header>
+
+      <main className="Main">
+        <div className="MainInner">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/search" element={<SearchResultsPage />} />
+            <Route path="/article/:title" element={<ArticlePage />} />
+            <Route path="/category/:category" element={<CategoryPage />} />
+          </Routes>
+        </div>
+      </main>
+
+      <footer className="Footer">
+        <div className="FooterInner">
+          <div>
+            Data from <span className="Badge">Wikipedia</span> • Base: {wikiBase}
+          </div>
+          <div>
+            Tip: Click categories below an article to explore more pages.
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
 
-export default App;
+// PUBLIC_INTERFACE
+export default function App() {
+  /** Main App entry (routes defined in AppShell). */
+  return <AppShell />;
+}

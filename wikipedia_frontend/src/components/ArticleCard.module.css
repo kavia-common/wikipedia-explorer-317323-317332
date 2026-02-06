@@ -1,0 +1,56 @@
+.card {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 12px;
+  align-items: start;
+
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  text-decoration: none;
+  color: var(--text);
+}
+
+.card:hover {
+  border-color: rgba(59, 130, 246, 0.35);
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
+}
+
+.thumb,
+.thumbPlaceholder {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: rgba(100, 116, 139, 0.12);
+}
+
+.thumbPlaceholder {
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: rgba(17, 24, 39, 0.45);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.title {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.desc {
+  color: var(--secondary);
+  font-size: 13px;
+}
+
+.extract {
+  color: rgba(17, 24, 39, 0.8);
+  font-size: 13px;
+  line-height: 1.4;
+}
