@@ -1,6 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { searchPages } from "../api/wikipedia";
+import {
+  getSearchCacheKey,
+  getWikipediaCacheStatus,
+  searchPages,
+  subscribeWikipediaCache,
+} from "../api/wikipedia";
 import ArticleCard from "../components/ArticleCard";
 import EmptyState from "../components/EmptyState";
 import ErrorState from "../components/ErrorState";
@@ -19,30 +24,86 @@ export default function SearchResultsPage() {
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState("idle"); // idle | loading | success | error
   const [error, setError] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Track current query key to avoid late updates when navigating quickly.
+  const activeKeyRef = useRef("");
 
   useEffect(() => {
-    if (!q.trim()) {
+    const trimmed = q.trim();
+    if (!trimmed) {
       setItems([]);
       setStatus("idle");
+      setError("");
+      setIsRefreshing(false);
+      activeKeyRef.current = "";
       return;
     }
+
+    const key = getSearchCacheKey(trimmed, 20);
+    activeKeyRef.current = key;
 
     const controller = new AbortController();
     let active = true;
 
-    setStatus("loading");
+    // If we already have cached data (possibly stale), don't force a full-screen loading state.
+    const cacheStatus = getWikipediaCacheStatus(key);
+    const hasAnyCached = cacheStatus.hit && Array.isArray(cacheStatus.value);
+
     setError("");
+    setIsRefreshing(cacheStatus.hit && cacheStatus.stale);
+
+    if (!hasAnyCached) {
+      setStatus("loading");
+    } else {
+      setItems(cacheStatus.value);
+      setStatus("success");
+    }
+
+    // Subscribe for background refresh updates for this key (SWR).
+    const unsubscribe = subscribeWikipediaCache(key, (value) => {
+      if (!active) return;
+      if (activeKeyRef.current !== key) return;
+      if (controller.signal.aborted) return;
+      if (!Array.isArray(value)) return;
+
+      setItems(value);
+      setStatus("success");
+      setIsRefreshing(false);
+    });
 
     (async () => {
       try {
-        const res = await searchPages(q.trim(), 20, { signal: controller.signal });
+        const res = await searchPages(trimmed, 20, {
+          signal: controller.signal,
+          // Persistence on by default in API; pass explicitly for clarity.
+          persist: true,
+          onUpdate: (value, meta) => {
+            // Guard against abort/unmount before updating state.
+            if (!active) return;
+            if (activeKeyRef.current !== key) return;
+            if (controller.signal.aborted) return;
+            if (!Array.isArray(value)) return;
+
+            setItems(value);
+            setStatus("success");
+            setIsRefreshing(meta.stale);
+          },
+        });
+
         if (!active) return;
+        if (controller.signal.aborted) return;
+        if (activeKeyRef.current !== key) return;
+
         setItems(res);
         setStatus("success");
+        setIsRefreshing(false);
       } catch (e) {
         if (!active) return;
         if (e?.name === "AbortError") return;
+
         setStatus("error");
+        setIsRefreshing(false);
         setError(e?.message || "Failed to load search results.");
       }
     })();
@@ -50,6 +111,7 @@ export default function SearchResultsPage() {
     return () => {
       active = false;
       controller.abort();
+      unsubscribe?.();
     };
   }, [q]);
 
@@ -68,6 +130,7 @@ export default function SearchResultsPage() {
         <h1 className={styles.title}>Results for “{q}”</h1>
         <div className={styles.count}>
           {status === "success" ? `${items.length} results` : null}
+          {status === "success" && isRefreshing ? " • Updating…" : null}
         </div>
       </div>
 
@@ -77,7 +140,8 @@ export default function SearchResultsPage() {
           title="Unable to load results"
           description={error || "Something went wrong."}
           onRetry={() => {
-            // Trigger effect by setting status; q is stable, so just re-run by forcing state update.
+            // By passing forceRefresh, we guarantee a network attempt; SWR still de-dupes.
+            // (Simplest "retry": push state through a re-render by setting status)
             setStatus("loading");
           }}
           retryLabel="Try again"
