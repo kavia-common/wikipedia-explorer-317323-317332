@@ -24,6 +24,40 @@
   padding: 14px;
 }
 
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--secondary);
+  font-size: 12px;
+
+  /* Prevent horizontal scroll on tiny screens */
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  margin-bottom: 10px;
+}
+
+.crumbLink {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.crumbLink:hover {
+  text-decoration: underline;
+}
+
+.crumbSep {
+  color: rgba(100, 116, 139, 0.6);
+}
+
+.crumbCurrent {
+  color: rgba(17, 24, 39, 0.9);
+  font-weight: 700;
+}
+
 .top {
   display: flex;
   flex-direction: column;

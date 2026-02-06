@@ -4,6 +4,39 @@
   gap: 12px;
 }
 
+.breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--secondary);
+  font-size: 12px;
+
+  /* Prevent horizontal scroll on tiny screens */
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.crumbLink {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.crumbLink:hover {
+  text-decoration: underline;
+}
+
+.crumbSep {
+  color: rgba(100, 116, 139, 0.6);
+}
+
+.crumbCurrent {
+  color: rgba(17, 24, 39, 0.9);
+  font-weight: 700;
+}
+
 .header {
   display: flex;
   flex-direction: column;
@@ -13,11 +46,25 @@
 .title {
   margin: 0;
   font-size: 18px;
+  overflow-wrap: anywhere;
 }
 
 .subtitle {
   color: var(--secondary);
   font-size: 13px;
+}
+
+.subcats {
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  border-radius: 16px;
+  padding: 12px;
+}
+
+.sectionTitle {
+  font-weight: 800;
+  font-size: 13px;
+  margin-bottom: 8px;
 }
 
 .state {
@@ -40,6 +87,45 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.loadMoreRow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.loadMoreButton {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 800;
+  cursor: pointer;
+  width: min(260px, 100%);
+}
+
+.loadMoreButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.loadMoreError {
+  width: 100%;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.06);
+  color: rgba(17, 24, 39, 0.9);
+  overflow-wrap: anywhere;
+}
+
+.loadMoreDone {
+  color: var(--secondary);
+  font-size: 13px;
 }
 
 @media (max-width: 900px) {

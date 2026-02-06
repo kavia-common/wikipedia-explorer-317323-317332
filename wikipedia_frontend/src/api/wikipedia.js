@@ -293,6 +293,76 @@ export async function getCategoryMembers(category, limit = 30, options = {}) {
   });
 }
 
+// PUBLIC_INTERFACE
+export async function getCategoryMembersPage(
+  category,
+  { limit = 30, continueToken = null } = {},
+  options = {}
+) {
+  /**
+   * Fetch a single page of category members with Action API pagination.
+   *
+   * Returns both the items and the next `continueToken` if more results exist.
+   */
+  const c = String(category || "").trim();
+
+  const url = buildActionApiUrl({
+    action: "query",
+    format: "json",
+    list: "categorymembers",
+    cmtitle: `Category:${c}`,
+    cmlimit: limit,
+    cmnamespace: 0,
+    ...(continueToken ? { cmcontinue: continueToken } : {}),
+  });
+
+  const data = await fetchJson(url, { signal: options.signal });
+  const members = data?.query?.categorymembers || [];
+  const items = members.map((m) => ({
+    pageid: m.pageid,
+    title: m.title,
+  }));
+
+  const nextToken = data?.continue?.cmcontinue ? String(data.continue.cmcontinue) : null;
+  return { items, continueToken: nextToken };
+}
+
+// PUBLIC_INTERFACE
+export async function getCategorySubcategories(
+  category,
+  { limit = 50, continueToken = null } = {},
+  options = {}
+) {
+  /**
+   * Fetch subcategories of a category (namespace 14) using Action API.
+   *
+   * Returns { items: string[], continueToken } where items are subcategory names
+   * without the `Category:` prefix.
+   */
+  const c = String(category || "").trim();
+
+  const url = buildActionApiUrl({
+    action: "query",
+    format: "json",
+    list: "categorymembers",
+    cmtitle: `Category:${c}`,
+    cmlimit: limit,
+    cmnamespace: 14,
+    ...(continueToken ? { cmcontinue: continueToken } : {}),
+  });
+
+  const data = await fetchJson(url, { signal: options.signal });
+  const members = data?.query?.categorymembers || [];
+
+  const items = members
+    .map((m) => String(m.title || ""))
+    .filter(Boolean)
+    .map((t) => t.replace(/^Category:/, ""));
+
+  const nextToken = data?.continue?.cmcontinue ? String(data.continue.cmcontinue) : null;
+  return { items, continueToken: nextToken };
+}
+
 /**
  * Phase 3 cache utilities (optional for pages).
  */

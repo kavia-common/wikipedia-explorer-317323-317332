@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import {
   getArticleCacheKeys,
   getArticleCategories,
@@ -21,7 +21,20 @@ import styles from "./ArticlePage.module.css";
 export default function ArticlePage() {
   /** Displays a Wikipedia article by title. */
   const { title: encodedTitle } = useParams();
+  const location = useLocation();
   const title = useMemo(() => decodeURIComponent(encodedTitle || ""), [encodedTitle]);
+
+  const fromCategory = location.state?.fromCategory
+    ? {
+        name: String(location.state.fromCategory.name || ""),
+        title: String(location.state.fromCategory.title || location.state.fromCategory.name || ""),
+        path: String(location.state.fromCategory.path || ""),
+        restoreScrollY:
+          typeof location.state.fromCategory.restoreScrollY === "number"
+            ? location.state.fromCategory.restoreScrollY
+            : null,
+      }
+    : null;
 
   const [summary, setSummary] = useState(null);
   const [html, setHtml] = useState("");
@@ -191,6 +204,33 @@ export default function ArticlePage() {
   return (
     <div className={styles.layout}>
       <main className={styles.main}>
+        {fromCategory?.name ? (
+          <nav className={styles.breadcrumbs} aria-label="Breadcrumb">
+            <Link className={styles.crumbLink} to="/">
+              Home
+            </Link>
+            <span className={styles.crumbSep} aria-hidden="true">
+              /
+            </span>
+            <Link
+              className={styles.crumbLink}
+              to={
+                fromCategory.path ||
+                `/category/${encodeURIComponent(fromCategory.name)}`
+              }
+              state={{
+                restoreScrollY: fromCategory.restoreScrollY,
+              }}
+            >
+              Category: {fromCategory.title || fromCategory.name}
+            </Link>
+            <span className={styles.crumbSep} aria-hidden="true">
+              /
+            </span>
+            <span className={styles.crumbCurrent}>Article</span>
+          </nav>
+        ) : null}
+
         <div className={styles.top}>
           <h1 className={styles.title}>{summary?.title || title}</h1>
           {summary?.description ? (
@@ -225,7 +265,14 @@ export default function ArticlePage() {
         <div className={styles.bottomMeta}>
           <div className={styles.metaTitle}>Categories</div>
           {categories.length > 0 ? (
-            <CategoryList categories={categories} />
+            <CategoryList
+              categories={categories}
+              linkState={{
+                fromArticle: {
+                  title: summary?.title || title,
+                },
+              }}
+            />
           ) : (
             <div className={styles.metaEmpty}>No categories found.</div>
           )}
