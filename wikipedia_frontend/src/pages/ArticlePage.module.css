@@ -10,11 +10,13 @@
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 16px;
+  min-width: 0;
 }
 
 .sidebar {
   position: sticky;
   top: 84px;
+  min-width: 0;
 }
 
 .sideCard {
@@ -97,45 +99,142 @@
   line-height: 1.55;
 }
 
+/* --- TOC UI --- */
+.tocDesktop {
+  position: sticky;
+  top: 84px;
+}
+
+.tocMobile {
+  display: none;
+  margin: 10px 0 12px;
+}
+
+.tocToggle {
+  width: 100%;
+  text-align: left;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.tocNav {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+  background: var(--surface);
+}
+
+.tocTitle {
+  font-weight: 900;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.tocList {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tocLink {
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 13px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.tocLink:hover {
+  text-decoration: underline;
+}
+
+.tocL2 {
+  margin-left: 0;
+}
+
+.tocL3 {
+  margin-left: 10px;
+}
+
+.tocL4 {
+  margin-left: 18px;
+}
+
+/* --- Article typography --- */
 .articleHtml {
   text-align: left;
   color: var(--color-text);
   font-size: 14px;
-  line-height: 1.7;
+  line-height: 1.75;
 
   /* Prevent long URLs/words from creating horizontal scroll */
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
+.articleHtml p {
+  margin: 10px 0;
+}
+
 .articleHtml h2,
 .articleHtml h3,
 .articleHtml h4 {
-  margin-top: 18px;
-  margin-bottom: 8px;
+  margin-top: 22px;
+  margin-bottom: 10px;
   line-height: 1.25;
+  scroll-margin-top: 92px; /* helps anchor navigation under sticky header */
+  letter-spacing: -0.01em;
+}
+
+.articleHtml h2 {
+  font-size: 18px;
+}
+
+.articleHtml h3 {
+  font-size: 16px;
+}
+
+.articleHtml h4 {
+  font-size: 15px;
 }
 
 .articleHtml a {
   color: var(--primary);
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
 }
 
 .articleHtml a:hover {
-  text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 
-.articleHtml img {
-  max-width: 100%;
-  height: auto;
+.articleHtml ul,
+.articleHtml ol {
+  padding-left: 18px;
+  margin: 10px 0;
 }
 
-/* Wikipedia content sometimes includes wide tables/pre; ensure they don't overflow */
-.articleHtml table {
-  display: block;
-  max-width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+.articleHtml li {
+  margin: 4px 0;
+}
+
+.articleHtml code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
+  font-size: 0.95em;
+  background: rgba(100, 116, 139, 0.12);
+  border: 1px solid rgba(100, 116, 139, 0.25);
+  padding: 0 6px;
+  border-radius: 8px;
 }
 
 .articleHtml pre {
@@ -145,6 +244,96 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--color-surface-2);
+  line-height: 1.55;
+}
+
+.articleHtml pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.articleHtml blockquote {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-left: 3px solid rgba(6, 182, 212, 0.55);
+  background: rgba(6, 182, 212, 0.08);
+  border-radius: 10px;
+}
+
+.articleHtml img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Wikipedia content sometimes includes wide tables; ensure they don't overflow the page. */
+.articleHtml :global(.wikiTableWrap) {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  /* Restrict horizontal scroll to this container only */
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 2px;
+  margin: 12px 0;
+  background: var(--surface);
+}
+
+.articleHtml :global(.wikiTableWrap table) {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 520px; /* allows intentional overflow on tiny screens, inside wrap only */
+}
+
+.articleHtml :global(.wikiTableWrap th),
+.articleHtml :global(.wikiTableWrap td) {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  vertical-align: top;
+  font-size: 13px;
+}
+
+.articleHtml :global(.wikiTableWrap th) {
+  background: rgba(100, 116, 139, 0.06);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Backlink from references */
+.articleHtml :global(a.wikiBacklink) {
+  color: var(--secondary);
+  text-decoration: none;
+  font-weight: 800;
+}
+
+/* --- References collapse UX --- */
+.referencesControls {
+  margin-top: 10px;
+}
+
+.referencesToggle {
+  width: 100%;
+  text-align: left;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(100, 116, 139, 0.06);
+  border: 1px solid var(--border);
+  font-weight: 900;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.referencesState {
+  display: none;
+}
+
+/* Hide references wrapper when collapsed (keeps DOM intact). */
+.referencesState[data-references-open="false"]
+  ~ .articleHtml
+  :global([data-references-wrapper="true"]) {
+  display: none;
 }
 
 .bottomMeta {
@@ -222,5 +411,19 @@
 
   .sidebar {
     position: static;
+  }
+
+  .tocDesktop {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .tocMobile {
+    display: block;
+  }
+
+  .tocDesktop {
+    display: none;
   }
 }

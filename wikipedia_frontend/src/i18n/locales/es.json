@@ -92,6 +92,17 @@
     "boundaryDescription": "Ocurrió un error inesperado al renderizar la página.",
     "somethingWentWrong": "Algo salió mal"
   },
+  "articleFidelity": {
+    "tocTitle": "Tabla de contenido",
+    "tocAriaLabel": "Tabla de contenido",
+    "tocToggleShow": "Mostrar tabla de contenido",
+    "tocToggleHide": "Ocultar tabla de contenido",
+    "referencesTitle": "Referencias",
+    "referencesAriaLabel": "Referencias",
+    "expand": "Expandir",
+    "collapse": "Contraer",
+    "backToText": "Volver al texto"
+  },
   "uiStates": {
     "emptyDefaultTitle": "Nada por aquí todavía"
   }

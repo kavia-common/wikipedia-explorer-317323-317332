@@ -92,6 +92,17 @@
     "boundaryDescription": "An unexpected error occurred while rendering the page.",
     "somethingWentWrong": "Something went wrong"
   },
+  "articleFidelity": {
+    "tocTitle": "Table of contents",
+    "tocAriaLabel": "Table of contents",
+    "tocToggleShow": "Show table of contents",
+    "tocToggleHide": "Hide table of contents",
+    "referencesTitle": "References",
+    "referencesAriaLabel": "References",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "backToText": "Back to text"
+  },
   "uiStates": {
     "emptyDefaultTitle": "Nothing here yet"
   }

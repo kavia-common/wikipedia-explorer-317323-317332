@@ -19,6 +19,202 @@ import { sanitizeWikipediaHtml } from "../utils/sanitizeHtml";
 import { addRecentArticleTitle } from "../pwa/offlineRecents";
 import styles from "./ArticlePage.module.css";
 
+/**
+ * Create a stable, URL-safe ID from a heading's text.
+ * - IDs are deterministic and remain stable across renders
+ * - Limited to [a-z0-9-_] to avoid weird URL/hash edge cases
+ */
+function slugifyHeading(text) {
+  const raw = String(text || "").trim().toLowerCase();
+  if (!raw) return "section";
+  const slug = raw
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "") // strip diacritics
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 64);
+  return slug || "section";
+}
+
+function isReferencesHeading(text) {
+  const raw = String(text || "").trim().toLowerCase();
+  if (!raw) return false;
+  // Common Wikipedia section names; keep simple and safe (no regex backtracking risks).
+  return (
+    raw === "references" ||
+    raw === "referencias" ||
+    raw === "références" ||
+    raw === "bibliography" ||
+    raw === "bibliografía" ||
+    raw === "notes" ||
+    raw === "notas"
+  );
+}
+
+/**
+ * Post-process sanitized HTML in a detached container.
+ * Security note: we never introduce new untrusted HTML; we only:
+ * - add safe attributes (id, data-*, aria-*)
+ * - wrap existing nodes in new divs
+ * - add safe anchor tags with hash hrefs
+ */
+function buildRenderModelFromSanitizedHtml(safeHtml) {
+  const container = document.createElement("div");
+  container.innerHTML = safeHtml || "";
+
+  const headings = Array.from(container.querySelectorAll("h2, h3, h4"));
+  const usedIds = new Set();
+  const toc = [];
+
+  headings.forEach((h) => {
+    const level = Number(String(h.tagName || "").slice(1));
+    if (![2, 3, 4].includes(level)) return;
+
+    // Prefer existing id, otherwise derive from visible text.
+    const existing = String(h.getAttribute("id") || "").trim();
+    let base = existing ? existing : slugifyHeading(h.textContent || "");
+    // Ensure safe characters only.
+    base = base.replace(/[^A-Za-z0-9\-_:.]/g, "-");
+
+    let id = base;
+    let n = 2;
+    while (!id || usedIds.has(id)) {
+      id = `${base}-${n}`;
+      n += 1;
+    }
+    usedIds.add(id);
+
+    // Only set if missing to avoid breaking existing internal links.
+    if (!existing) h.setAttribute("id", id);
+
+    toc.push({
+      id,
+      level,
+      text: String(h.textContent || "").trim(),
+    });
+  });
+
+  // References UX:
+  // Find a references section heading and wrap all following siblings until next same-or-higher heading.
+  let references = null;
+  for (const h of headings) {
+    if (!isReferencesHeading(h.textContent || "")) continue;
+
+    const refLevel = Number(String(h.tagName).slice(1));
+    const wrapper = document.createElement("div");
+    wrapper.setAttribute("data-references-wrapper", "true");
+
+    // Move heading + its section content into wrapper.
+    const start = h;
+    const parent = start.parentNode;
+    if (!parent) break;
+
+    const nodesToMove = [start];
+    let cursor = start.nextSibling;
+
+    while (cursor) {
+      // Stop at next heading of same or higher level
+      if (
+        cursor.nodeType === 1 &&
+        /^h[2-6]$/i.test(cursor.tagName || "") &&
+        Number(String(cursor.tagName).slice(1)) <= refLevel
+      ) {
+        break;
+      }
+      nodesToMove.push(cursor);
+      cursor = cursor.nextSibling;
+    }
+
+    nodesToMove.forEach((node) => wrapper.appendChild(node));
+    parent.insertBefore(wrapper, cursor || null);
+
+    references = { wrapperEl: wrapper };
+    break;
+  }
+
+  // Add in-text citation handling:
+  // - For <sup><a href="#cite_note-...">...</a></sup> ensure the link is marked for JS handling.
+  // - For references list entries that already have IDs (common on Wikipedia), add backlinks to the invoking sup if possible.
+  const citeLinks = Array.from(container.querySelectorAll('sup a[href^="#"]'));
+  citeLinks.forEach((a) => {
+    const href = String(a.getAttribute("href") || "");
+    const targetId = href.slice(1);
+    if (!targetId) return;
+
+    // Mark as citation jump.
+    a.setAttribute("data-cite-target", targetId);
+
+    // Ensure the sup has an id so references can link back.
+    const sup = a.closest("sup");
+    if (sup) {
+      const supId = sup.getAttribute("id");
+      if (!supId) {
+        const seed = `cite-ref-${targetId}`;
+        let id = seed;
+        let n = 2;
+        while (usedIds.has(id)) {
+          id = `${seed}-${n}`;
+          n += 1;
+        }
+        usedIds.add(id);
+        sup.setAttribute("id", id);
+      }
+      // Store sup id on link for reference-side backlink attempts.
+      a.setAttribute("data-cite-source", sup.getAttribute("id") || "");
+    }
+  });
+
+  // For reference items, attempt to add a "back to text" link pointing to the first source sup.
+  // Wikipedia commonly uses <li id="cite_note-..."> or similar.
+  const refItems = Array.from(container.querySelectorAll('li[id^="cite_note"], li[id^="cite_note-"], li[id^="cite_note_"]'));
+  refItems.forEach((li) => {
+    const id = String(li.getAttribute("id") || "");
+    if (!id) return;
+
+    // Find a corresponding in-text citation link targeting this id.
+    const matching = citeLinks.find((a) => String(a.getAttribute("data-cite-target") || "") === id);
+    const sourceId = matching ? String(matching.getAttribute("data-cite-source") || "") : "";
+    if (!sourceId) return;
+
+    // Avoid adding duplicates if SWR rerenders.
+    if (li.querySelector(`a[href="#${CSS.escape(sourceId)}"][data-backlink="true"]`)) return;
+
+    const back = document.createElement("a");
+    back.setAttribute("href", `#${sourceId}`);
+    back.setAttribute("data-backlink", "true");
+    back.className = "wikiBacklink";
+    back.textContent = "↩";
+    // Keep it minimal; label will be provided by aria-label in React via CSS ::after not possible.
+    back.setAttribute("aria-label", "Back to text");
+
+    // Append with spacing.
+    const spacer = document.createTextNode(" ");
+    li.appendChild(spacer);
+    li.appendChild(back);
+  });
+
+  // Improve table responsiveness without altering sanitized rules:
+  // Wrap each table in an overflow container.
+  const tables = Array.from(container.querySelectorAll("table"));
+  tables.forEach((table) => {
+    const wrap = document.createElement("div");
+    wrap.className = "wikiTableWrap";
+    table.parentNode?.insertBefore(wrap, table);
+    wrap.appendChild(table);
+
+    // Mark header cells so CSS can do sticky headers.
+    const ths = Array.from(table.querySelectorAll("th"));
+    ths.forEach((th) => th.setAttribute("data-sticky-th", "true"));
+  });
+
+  return {
+    html: container.innerHTML,
+    toc,
+    hasReferences: Boolean(references),
+  };
+}
+
 // PUBLIC_INTERFACE
 export default function ArticlePage() {
   /** Displays a Wikipedia article by title. */
@@ -50,6 +246,13 @@ export default function ArticlePage() {
 
   // Used to ignore late updates when navigating quickly between articles.
   const activeKeysRef = useRef({ summary: "", html: "", related: "" });
+
+  const articleRootRef = useRef(null);
+  const lastProcessedSafeHtmlRef = useRef("");
+  const pendingHashScrollRef = useRef(null);
+
+  const [tocOpenMobile, setTocOpenMobile] = useState(false);
+  const [referencesOpen, setReferencesOpen] = useState(true);
 
   useEffect(() => {
     if (!title) return;
@@ -189,6 +392,109 @@ export default function ArticlePage() {
     };
   }, [title]);
 
+  // Mobile defaults: collapse TOC and references.
+  useEffect(() => {
+    const isMobile =
+      typeof window !== "undefined" && window.matchMedia
+        ? window.matchMedia("(max-width: 640px)").matches
+        : false;
+    setTocOpenMobile(false);
+    setReferencesOpen(!isMobile);
+  }, [title]);
+
+  const safeHtml = useMemo(() => sanitizeWikipediaHtml(html), [html]);
+
+  // Derived render model (TOC + post-processed HTML) with O(#headings) work.
+  const renderModel = useMemo(() => {
+    // In SSR/tests without DOM, just pass-through.
+    if (typeof document === "undefined") {
+      return { html: safeHtml, toc: [], hasReferences: false };
+    }
+
+    // Avoid re-processing if SWR background update didn't change content.
+    if (lastProcessedSafeHtmlRef.current === safeHtml) {
+      return pendingHashScrollRef.current?.model || { html: safeHtml, toc: [], hasReferences: false };
+    }
+
+    const model = buildRenderModelFromSanitizedHtml(safeHtml);
+    lastProcessedSafeHtmlRef.current = safeHtml;
+    // Keep last model for hash-scroll effect usage without extra parsing.
+    pendingHashScrollRef.current = { model };
+    return model;
+  }, [safeHtml]);
+
+  // Handle initial hash navigation after content render, and any hash changes.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const run = () => {
+      const hash = String(window.location.hash || "");
+      if (!hash || hash.length < 2) return;
+      const id = hash.slice(1);
+
+      // Only scroll within the article root to avoid collisions.
+      const root = articleRootRef.current;
+      if (!root) return;
+      const target = root.querySelector(`#${CSS.escape(id)}`);
+      if (!target) return;
+
+      // Use rAF to wait until layout stabilizes; keeps SWR updates from janking.
+      requestAnimationFrame(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    };
+
+    run();
+    window.addEventListener("hashchange", run);
+    return () => window.removeEventListener("hashchange", run);
+  }, [renderModel.html, title]);
+
+  const tocItems = renderModel.toc || [];
+  const hasToc = tocItems.length > 0;
+  const hasReferences = Boolean(renderModel.hasReferences);
+
+  function scrollToId(id) {
+    const root = articleRootRef.current;
+    if (!root) return;
+    const target = root.querySelector(`#${CSS.escape(id)}`);
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function handleTocClick(e, id) {
+    e.preventDefault();
+    scrollToId(id);
+    // Update hash without full reload.
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", `#${id}`);
+    }
+  }
+
+  function handleArticleClick(e) {
+    const a = e.target?.closest?.("a");
+    if (!a) return;
+
+    const href = String(a.getAttribute("href") || "");
+    // Only handle in-page hash navigation; do not interfere with other links.
+    if (!href.startsWith("#") || href.length < 2) return;
+
+    const id = href.slice(1);
+    const root = articleRootRef.current;
+    if (!root) return;
+    const target = root.querySelector(`#${CSS.escape(id)}`);
+    if (!target) return;
+
+    e.preventDefault();
+    scrollToId(id);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", `#${id}`);
+    }
+  }
+
+  function toggleReferencesCollapsed() {
+    setReferencesOpen((v) => !v);
+  }
+
   if (status === "loading") {
     return <LoadingState title={t("article.loading")} />;
   }
@@ -205,7 +511,6 @@ export default function ArticlePage() {
   }
 
   const leadImage = summary?.thumbnail?.source || summary?.originalimage?.source || "";
-  const safeHtml = sanitizeWikipediaHtml(html);
 
   return (
     <div className={styles.layout}>
@@ -261,11 +566,66 @@ export default function ArticlePage() {
 
         {summary?.extract ? <div className={styles.extract}>{summary.extract}</div> : null}
 
+        {hasToc ? (
+          <section className={styles.tocMobile} aria-label={t("articleFidelity.tocAriaLabel")}>
+            <button
+              type="button"
+              className={styles.tocToggle}
+              aria-expanded={tocOpenMobile}
+              onClick={() => setTocOpenMobile((v) => !v)}
+            >
+              {tocOpenMobile ? t("articleFidelity.tocToggleHide") : t("articleFidelity.tocToggleShow")}
+            </button>
+            {tocOpenMobile ? (
+              <nav className={styles.tocNav} aria-label={t("articleFidelity.tocAriaLabel")}>
+                <div className={styles.tocTitle}>{t("articleFidelity.tocTitle")}</div>
+                <ol className={styles.tocList}>
+                  {tocItems.map((it) => (
+                    <li key={it.id} className={styles[`tocL${it.level}`] || styles.tocL2}>
+                      <a
+                        href={`#${it.id}`}
+                        className={styles.tocLink}
+                        onClick={(e) => {
+                          handleTocClick(e, it.id);
+                          setTocOpenMobile(false);
+                        }}
+                      >
+                        {it.text}
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              </nav>
+            ) : null}
+          </section>
+        ) : null}
+
         <div
+          ref={articleRootRef}
           className={styles.articleHtml}
-          // Sanitized before injection.
-          dangerouslySetInnerHTML={{ __html: safeHtml }}
+          onClick={handleArticleClick}
+          // Sanitized before injection; post-processed in a detached container only.
+          dangerouslySetInnerHTML={{ __html: renderModel.html }}
         />
+
+        {hasReferences ? (
+          <section className={styles.referencesControls} aria-label={t("articleFidelity.referencesAriaLabel")}>
+            <button
+              type="button"
+              className={styles.referencesToggle}
+              aria-expanded={referencesOpen}
+              onClick={toggleReferencesCollapsed}
+            >
+              {referencesOpen ? t("articleFidelity.collapse") : t("articleFidelity.expand")}{" "}
+              {t("articleFidelity.referencesTitle")}
+            </button>
+            {/* CSS will hide/show the actual references wrapper based on this data attribute */}
+            <div
+              className={styles.referencesState}
+              data-references-open={referencesOpen ? "true" : "false"}
+            />
+          </section>
+        ) : null}
 
         <div className={styles.bottomMeta}>
           <div className={styles.metaTitle}>{t("article.categories")}</div>
@@ -285,6 +645,27 @@ export default function ArticlePage() {
       </main>
 
       <aside className={styles.sidebar}>
+        {hasToc ? (
+          <nav className={styles.tocDesktop} aria-label={t("articleFidelity.tocAriaLabel")}>
+            <div className={styles.sideCard}>
+              <div className={styles.tocTitle}>{t("articleFidelity.tocTitle")}</div>
+              <ol className={styles.tocList}>
+                {tocItems.map((it) => (
+                  <li key={it.id} className={styles[`tocL${it.level}`] || styles.tocL2}>
+                    <a
+                      href={`#${it.id}`}
+                      className={styles.tocLink}
+                      onClick={(e) => handleTocClick(e, it.id)}
+                    >
+                      {it.text}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </nav>
+        ) : null}
+
         <div className={styles.sideCard}>
           <div className={styles.sideHeader}>
             <div className={styles.sideTitle}>{t("article.related")}</div>
