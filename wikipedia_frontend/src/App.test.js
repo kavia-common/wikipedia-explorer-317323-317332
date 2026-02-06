@@ -1,48 +1,61 @@
+import { act } from "react-dom/test-utils";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 
-test("renders app brand", () => {
-  render(
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  );
-  const brand = screen.getByText(/Wikipedia Explorer/i);
-  expect(brand).toBeInTheDocument();
+jest.mock("./api/wikipedia", () => {
+  // Keep everything else real except what App test needs.
+  const actual = jest.requireActual("./api/wikipedia");
+  return {
+    ...actual,
+    getSearchSuggestions: jest.fn(),
+  };
 });
 
-test("suggestions request is abortable (signal passed to fetch)", async () => {
-  const fetchSpy = jest
-    .spyOn(global, "fetch")
-    .mockResolvedValue({
-      ok: true,
-      json: async () => ["a", ["Alpha"], [], []],
-      text: async () => "",
+const { getSearchSuggestions } = require("./api/wikipedia");
+
+describe("App", () => {
+  test("renders app brand (header link)", () => {
+    render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    );
+
+    // Be specific to avoid multiple matches ("Wikipedia Explorer" appears in hero too).
+    const homeLink = screen.getByRole("link", { name: /wikipedia explorer home/i });
+    expect(homeLink).toBeInTheDocument();
+  });
+
+  test("suggestions request receives an AbortSignal", async () => {
+    jest.useFakeTimers();
+
+    getSearchSuggestions.mockResolvedValue(["Alpha"]);
+
+    render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    );
+
+    const input = screen.getByRole("combobox", { name: /search wikipedia/i });
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await user.click(input);
+    await user.type(input, "Al");
+
+    // Flush the SearchBar debounce window.
+    await act(async () => {
+      jest.advanceTimersByTime(350);
     });
 
-  render(
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  );
+    // Ensure the mock was called and received a signal option.
+    expect(getSearchSuggestions).toHaveBeenCalledTimes(1);
+    const options = getSearchSuggestions.mock.calls[0][2];
+    expect(options).toBeTruthy();
+    expect(options.signal).toBeInstanceOf(AbortSignal);
 
-  const input = screen.getByLabelText(/Search Wikipedia/i);
-  // Type enough characters to trigger suggestions.
-  input.focus();
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-
-  // React Testing Library recommends fireEvent/userEvent, but keep minimal:
-  // set value + dispatch input event.
-  input.value = "Al";
-  input.dispatchEvent(new Event("input", { bubbles: true }));
-
-  // Wait for fetch to be called.
-  await screen.findByText("Alpha");
-
-  const [, options] = fetchSpy.mock.calls[0];
-  expect(options).toBeTruthy();
-  expect(options.signal).toBeInstanceOf(AbortSignal);
-
-  fetchSpy.mockRestore();
+    jest.useRealTimers();
+  });
 });
