@@ -65,7 +65,7 @@ export default function SearchResultsPage() {
   return (
     <div className={styles.wrap}>
       <div className={styles.headerRow}>
-        <h2 className={styles.title}>Results for “{q}”</h2>
+        <h1 className={styles.title}>Results for “{q}”</h1>
         <div className={styles.count}>
           {status === "success" ? `${items.length} results` : null}
         </div>

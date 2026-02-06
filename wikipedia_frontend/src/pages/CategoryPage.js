@@ -55,7 +55,7 @@ export default function CategoryPage() {
   return (
     <div className={styles.wrap}>
       <div className={styles.header}>
-        <h2 className={styles.title}>Category: {category}</h2>
+        <h1 className={styles.title}>Category: {category}</h1>
         <div className={styles.subtitle}>Browse pages in this category.</div>
       </div>
 

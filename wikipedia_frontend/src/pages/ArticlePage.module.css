@@ -67,6 +67,10 @@
   color: rgba(17, 24, 39, 0.92);
   font-size: 14px;
   line-height: 1.7;
+
+  /* Prevent long URLs/words from creating horizontal scroll */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .articleHtml h2,
@@ -89,6 +93,23 @@
 .articleHtml img {
   max-width: 100%;
   height: auto;
+}
+
+/* Wikipedia content sometimes includes wide tables/pre; ensure they don't overflow */
+.articleHtml table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.articleHtml pre {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(100, 116, 139, 0.04);
 }
 
 .bottomMeta {

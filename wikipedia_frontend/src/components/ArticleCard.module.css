@@ -12,6 +12,11 @@
   color: var(--text);
 }
 
+/* Ensure focus ring matches card rounding nicely */
+.card:focus-visible {
+  border-radius: 14px;
+}
+
 .card:hover {
   border-color: rgba(59, 130, 246, 0.35);
   box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);

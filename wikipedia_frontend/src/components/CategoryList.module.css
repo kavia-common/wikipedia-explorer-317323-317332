@@ -2,6 +2,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  max-width: 100%;
 }
 
 .chip {
@@ -13,8 +14,17 @@
   background: rgba(59, 130, 246, 0.08);
   color: rgba(17, 24, 39, 0.9);
   text-decoration: none;
+
+  /* Avoid overflow when category names are long */
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .chip:hover {
   background: rgba(59, 130, 246, 0.12);
+}
+
+/* Extra clarity for keyboard users on chips */
+.chip:focus-visible {
+  border-color: rgba(59, 130, 246, 0.7);
 }

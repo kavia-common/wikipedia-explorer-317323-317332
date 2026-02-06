@@ -44,7 +44,7 @@ function addRecentSearch(query) {
 }
 
 // PUBLIC_INTERFACE
-export default function SearchBar({ initialQuery = "", onSubmit }) {
+export default function SearchBar({ initialQuery = "", onSubmit, inputId }) {
   /** Search bar with suggestions; calls onSubmit(query) when submitted. */
   const [value, setValue] = useState(initialQuery);
 
@@ -198,6 +198,7 @@ export default function SearchBar({ initialQuery = "", onSubmit }) {
         role="search"
       >
         <input
+          id={inputId}
           className={styles.input}
           value={value}
           onChange={(e) => {

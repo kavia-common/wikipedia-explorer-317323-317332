@@ -6,22 +6,24 @@
 .form {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .input {
   flex: 1;
+  min-width: 180px;
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px 12px;
-  outline: none;
+  /* Do not suppress outlines; global :focus-visible handles accessibility */
   font-size: 14px;
 }
 
+/* Keep a subtle non-keyboard focus treatment for mouse users */
 .input:focus {
-  border-color: rgba(59, 130, 246, 0.8);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.55);
 }
 
 .button {
@@ -32,6 +34,18 @@
   padding: 10px 14px;
   font-weight: 600;
   cursor: pointer;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 360px) {
+  .input {
+    min-width: 0;
+    flex-basis: 100%;
+  }
+
+  .button {
+    width: 100%;
+  }
 }
 
 .button:hover {

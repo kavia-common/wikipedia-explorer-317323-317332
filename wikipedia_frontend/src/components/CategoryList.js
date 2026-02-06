@@ -8,12 +8,12 @@ export default function CategoryList({ categories }) {
   if (!categories || categories.length === 0) return null;
 
   return (
-    <div className={styles.wrap} aria-label="Categories">
+    <nav className={styles.wrap} aria-label="Categories">
       {categories.map((c) => (
         <Link key={c} className={styles.chip} to={`/category/${encodeURIComponent(c)}`}>
           {c}
         </Link>
       ))}
-    </div>
+    </nav>
   );
 }

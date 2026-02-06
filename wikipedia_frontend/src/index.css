@@ -1,4 +1,7 @@
+/* Keep index.css minimal; App.css holds theme tokens and most global styling */
+html,
 body {
   margin: 0;
   background: #f9fafb;
+  max-width: 100%;
 }
