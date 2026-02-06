@@ -14,6 +14,7 @@ import CategoryList from "../components/CategoryList";
 import ErrorState from "../components/ErrorState";
 import LoadingState from "../components/LoadingState";
 import { sanitizeWikipediaHtml } from "../utils/sanitizeHtml";
+import { addRecentArticleTitle } from "../pwa/offlineRecents";
 import styles from "./ArticlePage.module.css";
 
 // PUBLIC_INTERFACE
@@ -36,6 +37,9 @@ export default function ArticlePage() {
 
   useEffect(() => {
     if (!title) return;
+
+    // Track last-viewed content so users can return offline.
+    addRecentArticleTitle(title, { max: 8 });
 
     const controller = new AbortController();
     let active = true;
@@ -192,10 +196,19 @@ export default function ArticlePage() {
           {summary?.description ? (
             <div className={styles.description}>
               {summary.description}
+              {typeof navigator !== "undefined" && navigator.onLine === false
+                ? " • Offline (cached)"
+                : null}
               {isRefreshing ? " • Updating…" : null}
             </div>
           ) : isRefreshing ? (
-            <div className={styles.description}>Updating…</div>
+            <div className={styles.description}>
+              {typeof navigator !== "undefined" && navigator.onLine === false
+                ? "Offline (cached)"
+                : "Updating…"}
+            </div>
+          ) : typeof navigator !== "undefined" && navigator.onLine === false ? (
+            <div className={styles.description}>Offline (cached)</div>
           ) : null}
         </div>
 

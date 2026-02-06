@@ -10,6 +10,7 @@ import ArticleCard from "../components/ArticleCard";
 import EmptyState from "../components/EmptyState";
 import ErrorState from "../components/ErrorState";
 import LoadingState from "../components/LoadingState";
+import { addRecentSearchQuery } from "../pwa/offlineRecents";
 import styles from "./SearchResultsPage.module.css";
 
 function useQueryParam(name) {
@@ -39,6 +40,9 @@ export default function SearchResultsPage() {
       activeKeyRef.current = "";
       return;
     }
+
+    // Track last-viewed searches for offline support and SW resync.
+    addRecentSearchQuery(trimmed, { max: 8 });
 
     const key = getSearchCacheKey(trimmed, 20);
     activeKeyRef.current = key;
@@ -130,6 +134,9 @@ export default function SearchResultsPage() {
         <h1 className={styles.title}>Results for “{q}”</h1>
         <div className={styles.count}>
           {status === "success" ? `${items.length} results` : null}
+          {typeof navigator !== "undefined" && navigator.onLine === false
+            ? " • Offline (cached)"
+            : null}
           {status === "success" && isRefreshing ? " • Updating…" : null}
         </div>
       </div>

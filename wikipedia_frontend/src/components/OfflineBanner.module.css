@@ -1,0 +1,22 @@
+.banner {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+
+  width: 100%;
+  padding: 10px 14px;
+
+  background: rgba(239, 68, 68, 0.10);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.30);
+  backdrop-filter: blur(8px);
+}
+
+.text {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2px;
+
+  color: rgba(17, 24, 39, 0.92);
+  font-size: 13px;
+  font-weight: 600;
+}

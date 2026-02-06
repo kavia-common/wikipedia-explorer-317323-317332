@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { Link, Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
 import "./App.css";
 import SearchBar from "./components/SearchBar";
+import OfflineBanner from "./components/OfflineBanner";
 import HomePage from "./pages/HomePage";
 import SearchResultsPage from "./pages/SearchResultsPage";
 import ArticlePage from "./pages/ArticlePage";
@@ -17,6 +18,7 @@ function AppShell() {
 
   return (
     <div className="AppShell">
+      <OfflineBanner />
       {/* Keyboard skip links (visible on focus) */}
       <a className="SkipLink" href="#main-content">
         Skip to content
